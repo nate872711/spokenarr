@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: spokenarr-postgres
+    environment:
+      POSTGRES_USER: spokenarr
+      POSTGRES_PASSWORD: spokenarr_pass
+      POSTGRES_DB: spokenarr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  spokenarr-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # image: nate8727/spokenarr-api:latest
+    container_name: spokenarr-api
+    environment:
+      - DATABASE_URL=postgresql://spokenarr:spokenarr_pass@postgres:5432/spokenarr
+      - SETTINGS_PATH=/app/config/settings.json
+    depends_on:
+      - postgres
+    ports:
+      - "5180:80"
+    volumes:
+      # Optional bind mounts (uncomment for dev)
+      # - /path/to/your/audiobooks:/data/audiobooks
+      # - ./data/downloads:/data/downloads
+      # - ./data/config:/app/config
+    restart: unless-stopped
+
+  spokenarr-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # image: nate8727/spokenarr-web:latest
+    container_name: spokenarr-web
+    environment:
+      - VITE_API_URL=http://spokenarr-api:80
+    ports:
+      - "3180:3000"
+    depends_on:
+      - spokenarr-api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

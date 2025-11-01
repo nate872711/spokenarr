@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#ff7a00"/>
+      <stop offset="1" stop-color="#ff9d3b"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#0d0d0f"/>
+  <path d="M128 208c0-88 72-160 160-160s160 72 160 160v48h-48v-48c0-61-51-112-112-112s-112 51-112 112v48h-48v-48z" fill="url(#g)"/>
+  <g transform="translate(96,240)">
+    <rect x="0" y="0" width="320" height="176" rx="8" fill="#ffffff"/>
+    <path d="M160 0v176" stroke="#0d0d0f" stroke-width="8"/>
+  </g>
+  <text x="50%" y="470" font-family="Montserrat, sans-serif" font-size="36" fill="white" text-anchor="middle">SPOKENARR</text>
+</svg>

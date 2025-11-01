@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --color-primary: #ff7a00;
+  --color-primary-light: #ff9d3b;
+  --color-bg: #0d0d0f;
+  --card-bg: #1a1a1d;
+}
+
+body { background: var(--color-bg); color: #fff; font-family: Inter, sans-serif; }
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  color: white;
+  padding: .5rem 1rem;
+  border-radius: .375rem;
+}
