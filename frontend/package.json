@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview --port 3000",
     "storybook": "storybook dev -p 6006 -s public --ci --no-open",
     "build-storybook": "storybook build -o storybook-static"
   },
