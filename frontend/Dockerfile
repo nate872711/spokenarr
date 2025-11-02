@@ -1,16 +1,15 @@
-FROM node:20-alpine
-
+# Stage 1: Build Storybook
+FROM node:20 AS build
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm install -g npm@latest
+RUN npm install
 
-# Copy all frontend source
 COPY . .
+RUN npm run build-storybook
 
-# Expose ports for Vite (3000) and Storybook (6006)
-EXPOSE 3000 6006
-
-# Ensure scripts run in proper PATH and both processes stay alive
-CMD [ "sh", "-c", "npm run dev & npm run storybook -- --ci --no-open" ]
+# Stage 2: Serve Storybook with a lightweight web server
+FROM nginx:alpine
+COPY --from=build /app/storybook-static /usr/share/nginx/html
+EXPOSE 6006
+CMD ["nginx", "-g", "daemon off;"]
