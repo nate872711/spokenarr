@@ -13,38 +13,27 @@ services:
     restart: unless-stopped
 
   spokenarr-api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
     environment:
       - DATABASE_URL=postgresql://spokenarr:spokenarr_pass@postgres:5432/spokenarr
-      - SETTINGS_PATH=/app/config/settings.json
     depends_on:
       - postgres
     ports:
       - "5180:80"
-    volumes:
-      # Optional bind mounts (uncomment for dev)
-      # - /path/to/your/audiobooks:/data/audiobooks
-      # - ./data/downloads:/data/downloads
-      # - ./data/config:/app/config
     restart: unless-stopped
 
   spokenarr-web:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     image: nate8727/spokenarr-web:latest
     container_name: spokenarr-web
     environment:
-      - VITE_API_URL=http://spokenarr-api:80
-    ports:
-      - "3180:3000"    # app dev server (Vite)
-      - "6006:6006"    # Storybook
+      - API_URL=http://spokenarr-api:80
     depends_on:
       - spokenarr-api
+    ports:
+      - "3080:3000"  # Storybook UI
     restart: unless-stopped
 
 volumes:
