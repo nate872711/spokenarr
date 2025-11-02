@@ -1,12 +1,8 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
-ARG VITE_API_URL=http://localhost:5180
-ENV VITE_API_URL=${VITE_API_URL}
-RUN echo "Building with VITE_API_URL=${VITE_API_URL}" && npm run build
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 3000
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000 6006
+# Start both dev server and storybook; use a lightweight process manager approach
+CMD ["sh", "-c", "npm run dev & npm run storybook"]
