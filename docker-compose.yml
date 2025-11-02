@@ -33,7 +33,7 @@ services:
     depends_on:
       - spokenarr-api
     ports:
-      - "3080:3000"  # Storybook UI
+      - "6006:6006"  # Storybook UI
     restart: unless-stopped
 
 volumes:
