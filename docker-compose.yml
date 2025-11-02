@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:15
@@ -14,7 +16,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # image: nate8727/spokenarr-api:latest
+    image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
     environment:
       - DATABASE_URL=postgresql://spokenarr:spokenarr_pass@postgres:5432/spokenarr
@@ -34,12 +36,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # image: nate8727/spokenarr-web:latest
+    image: nate8727/spokenarr-web:latest
     container_name: spokenarr-web
     environment:
       - VITE_API_URL=http://spokenarr-api:80
     ports:
-      - "3180:3000"
+      - "3180:3000"    # app dev server (Vite)
+      - "6006:6006"    # Storybook
     depends_on:
       - spokenarr-api
     restart: unless-stopped
