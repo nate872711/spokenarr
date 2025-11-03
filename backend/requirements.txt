@@ -1,5 +1,7 @@
 fastapi
-uvicorn
-psycopg2-binary
+uvicorn[standard]
+databases[postgresql]
 sqlalchemy
 pydantic
+python-dotenv
+httpx
