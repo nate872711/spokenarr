@@ -12,6 +12,8 @@ services:
 
   spokenarr-api:
     build: ./backend
+    env_file:
+      - .env
     image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
     environment:
