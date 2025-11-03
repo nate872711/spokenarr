@@ -1,1 +1,41 @@
-# Placeholder for docker-compose.yml
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: spokenarr-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  spokenarr-api:
+    build: ./backend
+    image: nate8727/spokenarr-api:latest
+    container_name: spokenarr-api
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://spokenarr:spokenarr_pass@postgres:5432/spokenarr}
+      - SETTINGS_PATH=/app/config/settings.json
+    depends_on:
+      - postgres
+    ports:
+      - "${API_HOST_PORT:-5080}:80"
+    volumes:
+      - ./backend/app:/app/app:ro
+    restart: unless-stopped
+
+  spokenarr-web:
+    build: ./frontend
+    image: nate8727/spokenarr-web:latest
+    container_name: spokenarr-web
+    depends_on:
+      - spokenarr-api
+    ports:
+      - "${WEB_HOST_PORT:-6080}:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
