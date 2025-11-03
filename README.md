@@ -3,7 +3,9 @@
 
 # 🎧 Spokenarr
 
-Spokenarr — automated audiobook manager using Storybook as the main web interface (dev server) for live editing.
+**Automated Audiobook Manager inspired by Readarr**
+
+_Download, organize, and track your audiobooks automatically._
 </div>
 
 Ports (default):
