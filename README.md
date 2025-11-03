@@ -1,6 +1,7 @@
-![logo204.png](frontend/src/assets/logo204.png)
+<div align="center">
+  <img src="frontend/src/assets/logo.png" alt="Audiarr Logo" width="160"/>
 
-# Spokenarr
+# 🎧 Spokenarr
 
 Spokenarr — automated audiobook manager using Storybook as the main web interface (dev server) for live editing.
 
