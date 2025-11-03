@@ -4,6 +4,7 @@
 # 🎧 Spokenarr
 
 Spokenarr — automated audiobook manager using Storybook as the main web interface (dev server) for live editing.
+</div>
 
 Ports (default):
 - API: http://localhost:5080
