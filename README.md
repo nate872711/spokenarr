@@ -1,4 +1,4 @@
-![logo.png](frontend/src/assets/logo 409.png)
+![logo 409.png](frontend/src/assets/logo 409.png)
 
 # Spokenarr
 
