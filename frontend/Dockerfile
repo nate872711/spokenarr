@@ -2,28 +2,29 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy dependencies
+# Copy dependencies first for caching
 COPY package*.json ./
 
-# Install dependencies with proper peer handling
+# Install dependencies with correct peer handling
 RUN npm ci --legacy-peer-deps
 
-# Copy the rest of the project
+# Copy all frontend source
 COPY . .
 
-# Build Storybook and the production app
-RUN npm run build-storybook -- --output-dir storybook-static
+# Build Storybook first, then main app
+# This ensures both directories exist before copying to nginx
+RUN npm run build-storybook -- --output-dir storybook-static || (echo "Storybook build failed" && cat /root/.npm/_logs/*-debug-0.log && exit 1)
 RUN npm run build
 
 # ---------- Production Stage ----------
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 
-# Copy built files from build stage
-COPY --from=build /app/dist ./        # your main Vite build output
+# Copy main web app and Storybook output
+COPY --from=build /app/dist ./         # your main Vite build
 COPY --from=build /app/storybook-static ./storybook
 
-# Copy nginx config if you have one
+# Optional: if you have a custom nginx config, uncomment and adjust
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
