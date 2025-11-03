@@ -1,3 +1,5 @@
+![logo.png](frontend/src/assets/logo 409.png)
+
 # Spokenarr
 
 Spokenarr — automated audiobook manager using Storybook as the main web interface (dev server) for live editing.
