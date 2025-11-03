@@ -29,12 +29,16 @@ services:
     build: ./frontend
     image: nate8727/spokenarr-web:latest
     container_name: spokenarr-web
+    environment:
+      - STORYBOOK_DISABLE_TELEMETRY=true
+      - NODE_ENV=development
     depends_on:
       - spokenarr-api
     ports:
       - "${WEB_HOST_PORT:-6080}:3000"
     volumes:
-      - ./frontend:/app:rw
+      - ./frontend:/app
+      - /app/node_modules
     restart: unless-stopped
 
 volumes:
