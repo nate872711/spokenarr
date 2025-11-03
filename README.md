@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/src/assets/logo.png" alt="Audiarr Logo" width="160"/>
+  <img src="frontend/src/assets/logo.png" alt="Spokenarr Logo" width="160"/>
 
 # 🎧 Spokenarr
 
