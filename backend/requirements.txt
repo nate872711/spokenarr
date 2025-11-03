@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-httpx
-databases[postgresql]
-sqlalchemy
-pydantic
-python-dotenv
-psycopg2-binary
