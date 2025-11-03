@@ -1,6 +1,10 @@
 import { addons } from "@storybook/manager-api";
-import spokenarrTheme from "./spokenarrTheme";
+import { spokenarrLight, spokenarrDark } from "./spokenarrThemes";
+
+const prefersDark =
+  window.matchMedia &&
+  window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 addons.setConfig({
-  theme: spokenarrTheme,
+  theme: prefersDark ? spokenarrDark : spokenarrLight,
 });
