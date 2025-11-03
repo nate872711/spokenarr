@@ -35,7 +35,7 @@ services:
     depends_on:
       - spokenarr-api
     ports:
-      - "${WEB_HOST_PORT:-6080}:3000"
+      - "6080:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
