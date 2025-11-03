@@ -1,18 +1,7 @@
-# Frontend Dockerfile for Storybook dev mode
-FROM node:18-alpine
-
-# Create app directory
+FROM node:20-alpine AS build
 WORKDIR /app
-
-# Copy and install dependencies
 COPY package*.json ./
 RUN npm install
-
-# Copy app source
 COPY . .
-
-# Expose the Storybook dev port
-EXPOSE 3000
-
-# Run Storybook directly (development mode)
-CMD ["npx", "storybook", "dev", "-p", "3000", "--ci", "--no-open"]
+RUN npm run build
+RUN npx storybook build -o storybook-static
