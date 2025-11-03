@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "storybook": "storybook dev -p 3000 public --host 0.0.0.0",
-    "build-storybook": "storybook build -o storybook-static"
+    "dev": "storybook dev -p 6006 -s public",
+  "build": "storybook build -o storybook-static",
+  "build-storybook": "storybook build -o storybook-static",
+  "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
