@@ -1,1 +1,1 @@
-// Placeholder for config.py
+import os

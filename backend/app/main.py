@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from . import db, services, settings_svc
+from . import db, settings_svc
 
 app = FastAPI(title='Spokenarr API')
 
@@ -25,8 +25,7 @@ async def shutdown():
 async def health():
     return {'status': 'ok'}
 
-# simple sample route
 @app.get('/api/audiobooks')
-async def list_audiobooks():
-    rows = await db.get_audiobooks(limit=50)
+async def list_audiobooks(limit: int = 25):
+    rows = await db.get_audiobooks(limit)
     return rows

@@ -16,18 +16,16 @@ audiobooks = Table(
     Column('imported_at', DateTime)
 )
 
-# create tables synchronously for simplicity (on container build/runtime this may run)
 def init_sync():
     engine = create_engine(DATABASE_URL)
     metadata.create_all(engine)
 
 async def connect():
-    await database.connect()
-    # ensure table exists
     try:
         init_sync()
     except Exception:
         pass
+    await database.connect()
 
 async def disconnect():
     await database.disconnect()
@@ -41,7 +39,7 @@ async def add_audiobook(record: dict):
     )
     await database.execute(query)
 
-async def get_audiobooks(limit: int = 50):
+async def get_audiobooks(limit: int = 25):
     query = audiobooks.select().limit(limit)
     rows = await database.fetch_all(query)
     return [dict(r) for r in rows]
