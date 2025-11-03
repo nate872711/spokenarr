@@ -16,7 +16,7 @@ docker compose up --build
 ```
 
 Then open:
-- Web UI (Storybook): [http://localhost:3080](http://localhost:3080)
+- Web UI (Storybook): [http://localhost:6006](http://localhost:6006)
 - API: [http://localhost:5180](http://localhost:5180/api/health)
 ```
 
