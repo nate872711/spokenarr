@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [".storybook/**/*", "../src/**/*"],
+  "compilerOptions": {
+    "types": ["node"],
+    "module": "esnext"
+  }
+}
