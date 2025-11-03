@@ -1,0 +1,15 @@
+{
+  "name": "Spokenarr",
+  "short_name": "Spokenarr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0f",
+  "theme_color": "#ff7a00",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
