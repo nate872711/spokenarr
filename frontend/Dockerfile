@@ -1,4 +1,4 @@
-# Stage 1: build Storybook
+# Stage 1: Build Storybook
 FROM node:20-alpine AS build
 WORKDIR /app
 
@@ -6,13 +6,16 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy the source code
+# Copy the app source
 COPY . .
 
-# Build Storybook static files
+# Build Storybook output
 RUN npx storybook build -o storybook-static
 
-# Stage 2: serve with nginx
+# Verify that the build succeeded
+RUN echo "Storybook build complete" && ls -la storybook-static
+
+# Stage 2: Serve via Nginx
 FROM nginx:stable-alpine
 COPY --from=build /app/storybook-static /usr/share/nginx/html
 EXPOSE 80
