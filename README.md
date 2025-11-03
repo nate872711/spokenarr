@@ -6,6 +6,8 @@
 **Automated Audiobook Manager inspired by Readarr**
 
 _Download, organize, and track your audiobooks automatically._
+
+*** This is still a work in progress ***
 </div>
 
 ---
