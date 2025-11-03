@@ -7,7 +7,7 @@
 
 _Download, organize, and track your audiobooks automatically._
 
-*** This is still a work in progress ***
+*** This a work in progress ***
 </div>
 
 ---
