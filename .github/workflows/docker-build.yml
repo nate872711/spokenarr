@@ -30,9 +30,11 @@ jobs:
           push: true
           tags: nate8727/spokenarr-api:latest
 
-      - name: Build & push frontend image (storybook dev image)
+      - name: Build & push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
           tags: nate8727/spokenarr-web:latest
+          build-args: |
+            NODE_ENV=production
