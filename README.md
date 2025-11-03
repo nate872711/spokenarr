@@ -32,6 +32,15 @@ Ports (default):
 
 ## 🚀 Quick Start (Docker Compose)
 
+### Git
+```bash
+git clone https://github.com/nate872711/spokenarr.git
+cd spokenarr
+docker compose up --build
+```
+
+### Example docker-compose
+
 ```yaml
 services:
   postgres:
