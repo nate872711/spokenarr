@@ -1,0 +1,3 @@
+:root { --color-primary: #ff7a00; --color-primary-light: #ff9d3b; --bg: #0d0d0f; }
+body { margin:0; font-family: Inter, sans-serif; background: var(--bg); color: #fff; }
+.container { padding: 24px; }
