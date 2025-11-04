@@ -1,5 +1,5 @@
 import React from 'react';
-import Navbar from './navbar';
+import Navbar from './Navbar';
 import { ExampleButton } from './components/ExampleButton';
 
 export default { title: 'App/Homepage', parameters: { layout:'fullscreen' } };
