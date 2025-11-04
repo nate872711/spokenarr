@@ -3,6 +3,12 @@
 
 # 🎧 Spokenarr
 
+[![Docker Build Status](https://github.com/nate8727/spokenarr/actions/workflows/docker-build.yml/badge.svg)](https://github.com/nate8727/spokenarr/actions/workflows/docker-build.yml)
+[![Docker Pulls (Web)](https://img.shields.io/docker/pulls/nate8727/spokenarr-web.svg)](https://hub.docker.com/r/nate8727/spokenarr-web)
+[![Docker Pulls (API)](https://img.shields.io/docker/pulls/nate8727/spokenarr-api.svg)](https://hub.docker.com/r/nate8727/spokenarr-api)
+
+
+
 **Automated Audiobook Manager inspired by Readarr**
 
 _Download, organize, and track your audiobooks automatically._
