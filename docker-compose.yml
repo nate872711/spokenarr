@@ -19,8 +19,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr}
     depends_on:
-      - db:
-          condition: service_healthy
+      db:
+        condition: service_healthy
     ports:
       - "${API_HOST_PORT:-5080}:80"
 
