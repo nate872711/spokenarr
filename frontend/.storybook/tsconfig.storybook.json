@@ -1,8 +1,18 @@
 {
   "extends": "../tsconfig.json",
-  "include": [".storybook/**/*", "../src/**/*"],
   "compilerOptions": {
-    "types": ["node"],
-    "module": "esnext"
-  }
+    "types": ["storybook__react"],
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true
+  },
+  "include": [
+    "../src/**/*.stories.*",
+    "../src/**/*.tsx",
+    "../src/**/*.ts",
+    "./**/*.ts",
+    "./**/*.tsx"
+  ]
 }
