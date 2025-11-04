@@ -1,21 +1,26 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import App from "./App";
+import Home from "./pages/Home";
+import Library from "./pages/Library";
+import Discover from "./pages/Discover";
+import Downloads from "./pages/Downloads";
+import Settings from "./pages/Settings";
 import "./index.css";
-
-import Navbar from "./Navbar";
-import StoryPage from "./pages/StoryPage";
-import About from "./pages/About";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Router>
-      <Navbar />
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<StoryPage />} />
-        <Route path="/stories" element={<StoryPage />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/" element={<App />}>
+          <Route index element={<Home />} />
+          <Route path="library" element={<Library />} />
+          <Route path="discover" element={<Discover />} />
+          <Route path="downloads" element={<Downloads />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Routes>
-    </Router>
+    </BrowserRouter>
   </React.StrictMode>
 );
