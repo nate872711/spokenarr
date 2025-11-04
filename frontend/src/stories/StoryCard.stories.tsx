@@ -1,17 +1,20 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import StoryCard from '../components/StoryCard';
+import type { Meta, StoryObj } from "@storybook/react";
+import StoryCard from "../components/StoryCard";
 
 const meta: Meta<typeof StoryCard> = {
-  title: 'Components/StoryCard',
+  title: "Components/StoryCard",
   component: StoryCard,
+  tags: ["autodocs"],
 };
-export default meta;
 
+export default meta;
 type Story = StoryObj<typeof StoryCard>;
 
 export const Default: Story = {
   args: {
-    title: 'Sample Story',
-    author: 'Narrator',
+    title: "The Future of Spoken Narratives",
+    description: "A look into the next evolution of audio storytelling.",
+    author: "Spokenarr Team",
+    date: "Nov 2025",
   },
 };
