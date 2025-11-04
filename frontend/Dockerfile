@@ -3,30 +3,35 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy dependency files and install first for caching
+# Copy dependency files first
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
 
-# Copy the rest of the frontend code
+# Use npm ci if a lockfile exists, otherwise fallback to npm install
+RUN if [ -f package-lock.json ]; then \
+      npm ci --legacy-peer-deps; \
+    else \
+      npm install --legacy-peer-deps; \
+    fi
+
+# Copy the rest of the app source
 COPY . .
 
-# Ensure vite & esbuild exist
+# Rebuild vite and esbuild for Alpine compatibility
 RUN npm rebuild esbuild && npm rebuild vite || true
 
-# Build the main app only (no Storybook in production)
+# Build the main frontend and Storybook separately
 RUN npm run build
+RUN npm run build-storybook -- --output-dir storybook-static
 
-# Stage 2: Serve the app with Nginx
+# Stage 2: Serve via Nginx
 FROM nginx:stable-alpine
 
-# Copy custom Nginx configuration
+# Custom Nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built frontend and Storybook
+# Copy build outputs
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
-# Expose port 80
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
