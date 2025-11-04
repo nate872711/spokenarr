@@ -1,17 +1,30 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.stories.@(js|jsx|ts|tsx)"],
+  framework: {
+    name: "@storybook/react-vite",
+    options: {},
+  },
+
+  stories: [
+    "../src/**/*.mdx",
+    "../src/**/*.stories.@(js|jsx|ts|tsx)",
+  ],
+
   addons: [
     "@storybook/addon-links",
     "@storybook/addon-essentials",
     "@storybook/addon-interactions",
     "@storybook/addon-themes",
   ],
-  framework: {
-    name: "@storybook/react-vite",
-    options: {},
+
+  viteFinal: async (viteConfig) => {
+    // Fix for file watching and rebuilds in Docker/CI
+    viteConfig.server = viteConfig.server || {};
+    viteConfig.server.watch = { usePolling: true };
+    return viteConfig;
   },
+
   docs: {
     autodocs: "tag",
   },
