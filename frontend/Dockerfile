@@ -2,31 +2,25 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy dependencies
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy all source files
+# Copy all source files and build both the app and Storybook
 COPY . .
-
-# Build Storybook (non-blocking)
-RUN npx storybook build -o storybook-static || echo "⚠️ Storybook build skipped due to validation errors"
-
-# Build main Vite app
-RUN npm run build || echo "⚠️ Vite build failed, skipping static copy"
+RUN npm run build
+RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build skipped"
 
 # ---------- Production Stage ----------
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 
-# Copy app build
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/storybook-static ./storybook
+# Copy build artifacts from the previous stage
+COPY --from=build /app/dist ./       # React or Vite build
+COPY --from=build /app/storybook-static ./storybook  # Storybook (optional)
 
-# Copy static assets and config
+# Copy a custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 3000
 CMD ["nginx", "-g", "daemon off;"]
