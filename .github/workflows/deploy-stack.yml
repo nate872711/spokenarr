@@ -5,9 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-  permissions:
-    contents: write
-    packages: write
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   bump-version:
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for commit history
+          fetch-depth: 0  # Required for changelog generation
 
       - name: 🔢 Bump version number
         id: bump
@@ -35,13 +35,15 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "✅ Version bumped from $OLD_VERSION to $NEW_VERSION"
 
-      - name: 💾 Commit new version
+      - name: 💾 Commit new version and tag
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add version.txt
-          git commit -m "🔖 Bump version to ${{ steps.bump.outputs.version }}" || echo "No changes"
+          git commit -m "🔖 Bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
           git push
+          git tag ${{ steps.bump.outputs.version }}
+          git push origin ${{ steps.bump.outputs.version }}
 
   build-api:
     name: 🧱 Build API Image
@@ -113,7 +115,7 @@ jobs:
       - name: 🧾 Generate changelog since last version
         id: changelog
         run: |
-          PREV_TAG=$(git tag --sort=-creatordate | head -n 1)
+          PREV_TAG=$(git tag --sort=-creatordate | tail -n 2 | head -n 1)
           echo "Previous tag: $PREV_TAG"
           if [ -z "$PREV_TAG" ]; then
             git log --pretty=format:"- %s" > changelog.md
