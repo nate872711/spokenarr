@@ -19,12 +19,10 @@ jobs:
       - name: Extract version tag
         id: vars
         run: |
-          # Generate a semantic version based on number of commits on main
           VERSION="v1.$(git rev-list --count HEAD).0"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Generated version: ${VERSION}-${SHORT_SHA}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -38,12 +36,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build and push backend image
-      - name: Build & push API image
+      # Build and push API image for both amd64 + arm64
+      - name: Build & push API image (multi-arch)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ steps.vars.outputs.version }}
@@ -51,12 +50,13 @@ jobs:
           cache-from: type=registry,ref=${{ env.API_IMAGE }}:cache
           cache-to: type=inline
 
-      # Build and push frontend image
-      - name: Build & push Web UI image
+      # Build and push Web UI image for both amd64 + arm64
+      - name: Build & push Web UI image (multi-arch)
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ steps.vars.outputs.version }}
