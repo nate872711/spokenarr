@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
       POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
