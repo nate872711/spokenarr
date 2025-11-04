@@ -7,9 +7,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_USER: nate8727
+      API_IMAGE: nate8727/spokenarr-api
+      WEB_IMAGE: nate8727/spokenarr-web
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Extract version tag
+        id: vars
+        run: |
+          # Generate a semantic version based on number of commits on main
+          VERSION="v1.$(git rev-list --count HEAD).0"
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}-${SHORT_SHA}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -29,8 +44,11 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: nate8727/spokenarr-api:latest
-          cache-from: type=registry,ref=nate8727/spokenarr-api:cache
+          tags: |
+            ${{ env.API_IMAGE }}:latest
+            ${{ env.API_IMAGE }}:${{ steps.vars.outputs.version }}
+            ${{ env.API_IMAGE }}:build-${{ steps.vars.outputs.short_sha }}
+          cache-from: type=registry,ref=${{ env.API_IMAGE }}:cache
           cache-to: type=inline
 
       # Build and push frontend image
@@ -39,8 +57,11 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: nate8727/spokenarr-web:latest
-          cache-from: type=registry,ref=nate8727/spokenarr-web:cache
+          tags: |
+            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.WEB_IMAGE }}:${{ steps.vars.outputs.version }}
+            ${{ env.WEB_IMAGE }}:build-${{ steps.vars.outputs.short_sha }}
+          cache-from: type=registry,ref=${{ env.WEB_IMAGE }}:cache
           cache-to: type=inline
           build-args: |
             NODE_ENV=production
