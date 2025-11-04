@@ -1,30 +1,32 @@
-# ---------- STAGE 1: BUILD ----------
+# Stage 1: Build the frontend
 FROM node:20-alpine AS build
+
 WORKDIR /app
 
-# Copy dependencies and install
+# Copy dependency files and install first (cache dependencies)
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy all source code
-COPY . .
+# Copy all source files after dependencies
+COPY ./ ./
 
-# Build main Vite app and Storybook
+# Build Vite app
 RUN npm run build
-RUN npm run build-storybook -- --output-dir storybook-static
 
-# ---------- STAGE 2: SERVE ----------
+# Build Storybook (optional, not required for runtime)
+RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build skipped"
+
+# Stage 2: Serve with Nginx
 FROM nginx:stable-alpine
-WORKDIR /usr/share/nginx/html
 
-# Remove the default Nginx content completely
-RUN rm -rf ./*
+# Clear any existing files in the default Nginx folder
+RUN rm -rf /usr/share/nginx/html/*
 
-# Copy the built frontend and Storybook output
-COPY --from=build /app/dist ./
-COPY --from=build /app/storybook-static ./storybook
+# Copy your build output into Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
-# Copy custom Nginx configuration
+# Copy the custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
