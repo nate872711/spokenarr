@@ -1,9 +1,9 @@
 export default function Discover() {
-  const sampleBooks = [
-    { title: "The Martian", author: "Andy Weir" },
-    { title: "Project Hail Mary", author: "Andy Weir" },
-    { title: "Dune", author: "Frank Herbert" },
-    { title: "The Hobbit", author: "J.R.R. Tolkien" },
+  return (
+    <div className="p-8 text-white">
+      <h1 className="text-3xl font-bold mb-4">Discover</h1>
+      <p>Search and monitor new audiobook releases from supported sources.</p>
+    </div>
   ];
 
   return (
