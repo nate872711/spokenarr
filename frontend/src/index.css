@@ -1,15 +1,19 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-  @apply bg-gradient-to-br from-purple-800 via-indigo-700 to-blue-600 text-gray-100;
+:root {
+  --color-primary: #7c3aed; /* Purple */
+  --color-secondary: #3b82f6; /* Blue */
+  --bg-dark: #0f172a;
+  --text-light: #e2e8f0;
 }
 
-.card {
-  @apply bg-gray-900/60 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-gray-700/50;
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: var(--text-light);
+  min-height: 100vh;
+}
+
+.app {
+  text-align: center;
+  padding: 2rem;
 }
