@@ -34,11 +34,6 @@ services:
 
   web:
     container_name: spokenarr-web
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
     image: nate8727/spokenarr-web:latest
     depends_on:
       - api
