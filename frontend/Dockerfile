@@ -6,8 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Cache dependencies separately
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps
+RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps; else npm install --legacy-peer-deps; fi
 
 # Stage 2: Build
 FROM node:20-alpine AS build
