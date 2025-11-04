@@ -1,33 +1,38 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-const Navbar = () => {
+export default function Navbar() {
+  const location = useLocation();
+
+  const navItems = [
+    { path: "/", label: "Library" },
+    { path: "/discover", label: "Discover" },
+    { path: "/downloads", label: "Downloads" },
+    { path: "/settings", label: "Settings" },
+  ];
+
   return (
-    <nav className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white shadow-md">
-      <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-wide">Spokenarr</h1>
-        <div className="space-x-6">
-          <Link to="/" className="hover:text-gray-200">
-            Home
-          </Link>
-          <Link to="/stories" className="hover:text-gray-200">
-            Stories
-          </Link>
-          <Link to="/about" className="hover:text-gray-200">
-            About
-          </Link>
-          <a
-            href="/storybook/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-gray-200"
-          >
-            Storybook
-          </a>
+    <nav className="bg-gray-800 border-b border-gray-700">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <img src="/assets/logo.png" alt="Spokenarr logo" className="h-8" />
+          <h1 className="text-xl font-bold">Spokenarr</h1>
+        </div>
+        <div className="flex gap-6">
+          {navItems.map(({ path, label }) => (
+            <Link
+              key={path}
+              to={path}
+              className={`${
+                location.pathname === path
+                  ? "text-yellow-400"
+                  : "text-gray-300 hover:text-white"
+              } font-medium`}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
     </nav>
   );
-};
-
-export default Navbar;
+}
