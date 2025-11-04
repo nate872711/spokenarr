@@ -5,17 +5,15 @@ WORKDIR /app
 
 # Copy dependency files and install first for caching
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
-# Copy all source files except storybook and .stories files
-# The .dockerignore file will also help exclude them
+# Copy the rest of the frontend code
 COPY . .
 
-# Remove Storybook-related files to prevent them from being bundled in production
-RUN find . -type f \( -name "*.stories.*" -o -name "preview.*" -o -name "main.*" \) -delete || true
-RUN rm -rf .storybook stories || true
+# Ensure vite & esbuild exist
+RUN npm rebuild esbuild && npm rebuild vite || true
 
-# Build the main app only (no storybook in production)
+# Build the main app only (no Storybook in production)
 RUN npm run build
 
 # Stage 2: Serve the app with Nginx
@@ -24,8 +22,9 @@ FROM nginx:stable-alpine
 # Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built frontend files to Nginx web directory
+# Copy built frontend and Storybook
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
 # Expose port 80
 EXPOSE 80
