@@ -1,9 +1,13 @@
+const baseConfig = require("../tailwind.config.js");
+
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class", // Required for theme switching
-  theme: {
-    extend: {},
-  },
-  plugins: [],
+module.exports = {
+  ...baseConfig,
+  content: [
+    "../src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./**/*.mdx",
+  ],
+  corePlugins: baseConfig.corePlugins,
+  theme: baseConfig.theme,
+  plugins: baseConfig.plugins,
 };
