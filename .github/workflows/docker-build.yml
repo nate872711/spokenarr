@@ -1,67 +1,36 @@
-name: Build and Push Spokenarr Docker Images
+name: 🏗️ Build & Push Web UI (Multi-Arch, Cached)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-web:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_USER: nate8727
-      API_IMAGE: nate8727/spokenarr-api
-      WEB_IMAGE: nate8727/spokenarr-web
-
     steps:
-      - name: Checkout repository
+      - name: 🧰 Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version tag
-        id: vars
-        run: |
-          VERSION="v1.$(git rev-list --count HEAD).0"
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
+      - name: ⚙️ Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: 🔑 Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build and push API image for both amd64 + arm64
-      - name: Build & push API image (multi-arch)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.API_IMAGE }}:latest
-            ${{ env.API_IMAGE }}:${{ steps.vars.outputs.version }}
-            ${{ env.API_IMAGE }}:build-${{ steps.vars.outputs.short_sha }}
-          cache-from: type=registry,ref=${{ env.API_IMAGE }}:cache
-          cache-to: type=inline
-
-      # Build and push Web UI image for both amd64 + arm64
-      - name: Build & push Web UI image (multi-arch)
+      - name: 🧱 Build & Push (with caching)
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
+          tags: nate8727/spokenarr-web:latest
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.WEB_IMAGE }}:latest
-            ${{ env.WEB_IMAGE }}:${{ steps.vars.outputs.version }}
-            ${{ env.WEB_IMAGE }}:build-${{ steps.vars.outputs.short_sha }}
-          cache-from: type=registry,ref=${{ env.WEB_IMAGE }}:cache
-          cache-to: type=inline
-          build-args: |
-            NODE_ENV=production
+          cache-from: type=registry,ref=nate8727/spokenarr-web:cache
+          cache-to: type=registry,ref=nate8727/spokenarr-web:cache,mode=max
