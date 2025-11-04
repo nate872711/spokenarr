@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy source code and build both app and storybook
+# Copy all files and build
 COPY . .
 RUN npm run build || echo "Main build failed or skipped"
 RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build failed"
@@ -15,15 +15,13 @@ RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook 
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 
-# Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy main web app build output (Vite/CRA)
-# Adjust this line depending on your frontend framework
-COPY --from=build /app/dist ./  # For Vite
-# COPY --from=build /app/build ./  # Uncomment this line instead if it’s React CRA
+# Copy both possible build folders (Vite or CRA)
+COPY --from=build /app/dist ./ 2>/dev/null || true
+COPY --from=build /app/build ./ 2>/dev/null || true
 
-# Copy Storybook to a subpath
+# Copy Storybook
 COPY --from=build /app/storybook-static ./storybook
 
 EXPOSE 80
