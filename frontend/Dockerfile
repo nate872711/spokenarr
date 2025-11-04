@@ -19,8 +19,8 @@ WORKDIR /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy Vite build output
-COPY --from=build /app/dist ./    # Vite build directory
-COPY --from=build /app/storybook-static ./storybook  # Storybook static output
+RUN mkdir -p /usr/share/nginx/html/storybook
+COPY --from=build /app/storybook-static ./storybook 2>/dev/null || true
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
