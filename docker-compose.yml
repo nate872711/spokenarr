@@ -1,55 +1,60 @@
+version: "3.9"
+
 services:
-  postgres:
+  db:
     image: postgres:16
-    container_name: spokenarr-postgres
+    container_name: spokenarr-db
+    restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
+      timeout: 5s
       retries: 10
+      start_period: 10s
     networks:
       - spokenarr-network
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
 
-  spokenarr-api:
-    build: ./backend
-    env_file:
-      - .env
-    image: nate8727/spokenarr-api:latest
+  api:
     container_name: spokenarr-api
+    build:
+      context: ./backend
+    restart: always
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SETTINGS_PATH=/app/config/settings.json
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     depends_on:
-      - postgres
+      db:
+        condition: service_healthy
     ports:
-      - "${API_HOST_PORT:-5080}:80"
-    volumes:
-      - ./backend/app:/app/app:ro
-    restart: unless-stopped
+      - "${API_HOST_PORT}:8000"
+    networks:
+      - spokenarr-network
 
-  spokenarr-web:
-    build: ./frontend
-    image: nate8727/spokenarr-web:latest
+  web:
     container_name: spokenarr-web
-    environment:
-      - STORYBOOK_DISABLE_TELEMETRY=true
-      - NODE_ENV=development
+    build:
+      context: ./frontend
+    restart: always
     depends_on:
-      - spokenarr-api
+      - api
     ports:
-      - "6080:80"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    restart: unless-stopped
+      - "${WEB_HOST_PORT}:3000"
+    networks:
+      - spokenarr-network
 
 volumes:
-  pgdata:
+  postgres_data:
+
+networks:
+  spokenarr-network:
+    driver: bridge
