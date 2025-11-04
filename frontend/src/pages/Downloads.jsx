@@ -1,37 +1,28 @@
-import { useEffect, useState } from 'react';
-import { fetchDownloads } from '../services/api';
+import { useState } from "react";
 
 export default function Downloads() {
-  const [downloads, setDownloads] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDownloads().then((data) => {
-      setDownloads(data);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) return <p className="p-8 text-gray-400">Loading downloads...</p>;
+  const [downloads] = useState([
+    { title: "Example Audiobook 1", progress: 75 },
+    { title: "Example Audiobook 2", progress: 100 },
+  ]);
 
   return (
     <div className="p-8 text-white">
       <h1 className="text-3xl font-bold mb-4">Downloads</h1>
-      <ul className="space-y-4">
-        {downloads.map((item) => (
-          <li
-            key={item.id}
-            className={`p-4 rounded-xl shadow-lg ${
-              item.status === 'downloading'
-                ? 'bg-gradient-to-r from-purple-600 to-blue-600 animate-pulse'
-                : 'bg-gray-700'
-            }`}
-          >
-            <h2 className="font-semibold text-lg">{item.title}</h2>
-            <p className="text-sm text-gray-300">Status: {item.status}</p>
-          </li>
-        ))}
-      </ul>
+      {downloads.map((d, i) => (
+        <div
+          key={i}
+          className="bg-gray-800 rounded-xl p-4 mb-4 shadow-lg border border-purple-600"
+        >
+          <h2 className="font-semibold">{d.title}</h2>
+          <div className="w-full bg-gray-700 rounded-full h-3 mt-2">
+            <div
+              className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full"
+              style={{ width: `${d.progress}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
