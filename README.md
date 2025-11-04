@@ -8,7 +8,6 @@
 [![Docker Pulls (API)](https://img.shields.io/docker/pulls/nate8727/spokenarr-api.svg)](https://hub.docker.com/r/nate8727/spokenarr-api)
 
 
-
 **Automated Audiobook Manager inspired by Readarr**
 
 _Download, organize, and track your audiobooks automatically._
