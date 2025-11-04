@@ -1,8 +1,9 @@
 export default function Downloads() {
-  const downloads = [
-    { title: "The Expanse - Leviathan Wakes", progress: 80 },
-    { title: "The Way of Kings", progress: 45 },
-    { title: "Mistborn: The Final Empire", progress: 10 },
+  return (
+    <div className="p-8 text-white">
+      <h1 className="text-3xl font-bold mb-4">Downloads</h1>
+      <p>Track your audiobook download queue and progress.</p>
+    </div>
   ];
 
   return (
