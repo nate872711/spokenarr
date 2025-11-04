@@ -35,6 +35,8 @@ services:
         condition: service_healthy
     ports:
       - "${API_HOST_PORT}:8000"
+    volumes:
+      - ./backend/audio:/app/audio
     networks:
       - spokenarr-network
 
