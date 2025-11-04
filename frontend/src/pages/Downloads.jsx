@@ -1,33 +1,37 @@
+import { useEffect, useState } from 'react';
+import { fetchDownloads } from '../services/api';
+
 export default function Downloads() {
-  return (
-    <div className="p-8 text-white">
-      <h1 className="text-3xl font-bold mb-4">Downloads</h1>
-      <p>Track your audiobook download queue and progress.</p>
-    </div>
-  ];
+  const [downloads, setDownloads] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDownloads().then((data) => {
+      setDownloads(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <p className="p-8 text-gray-400">Loading downloads...</p>;
 
   return (
     <div className="p-8 text-white">
-      <h1 className="text-3xl font-bold mb-4">Active Downloads</h1>
-      <p className="text-gray-400 mb-6">
-        Track your audiobook download queue and progress.
-      </p>
-      <div className="space-y-4">
-        {downloads.map((item, idx) => (
-          <div key={idx} className="bg-gray-800 p-4 rounded-lg">
-            <div className="flex justify-between mb-1">
-              <span>{item.title}</span>
-              <span>{item.progress}%</span>
-            </div>
-            <div className="w-full bg-gray-600 rounded-full h-2.5">
-              <div
-                className="bg-green-500 h-2.5 rounded-full"
-                style={{ width: `${item.progress}%` }}
-              ></div>
-            </div>
-          </div>
+      <h1 className="text-3xl font-bold mb-4">Downloads</h1>
+      <ul className="space-y-4">
+        {downloads.map((item) => (
+          <li
+            key={item.id}
+            className={`p-4 rounded-xl shadow-lg ${
+              item.status === 'downloading'
+                ? 'bg-gradient-to-r from-purple-600 to-blue-600 animate-pulse'
+                : 'bg-gray-700'
+            }`}
+          >
+            <h2 className="font-semibold text-lg">{item.title}</h2>
+            <p className="text-sm text-gray-300">Status: {item.status}</p>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
