@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+  permissions:
+    contents: write
+    packages: write
+
 jobs:
   bump-version:
     name: 🏷️ Bump Version
