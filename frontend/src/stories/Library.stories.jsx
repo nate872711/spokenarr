@@ -1,18 +1,17 @@
 import Library from '../pages/Library';
 
-export default {
-  title: 'Pages/Library',
-  component: Library,
-};
-
-export const Default = () => <Library />;
-
-// frontend/src/stories/Downloads.stories.jsx
-import Downloads from '../pages/Downloads';
 
 export default {
-  title: 'Pages/Downloads',
-  component: Downloads,
+title: 'Pages/Library',
+component: Library,
+parameters: {
+layout: 'fullscreen',
+backgrounds: { default: 'dark' },
+},
+argTypes: {
+totalBooks: { control: 'number', defaultValue: 42, description: 'Number of audiobooks in library' },
+},
 };
 
-export const Default = () => <Downloads />;
+
+export const Default = (args) => <Library {...args} />;
