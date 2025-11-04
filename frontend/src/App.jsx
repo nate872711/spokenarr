@@ -1,8 +1,8 @@
 export default function App() {
   return (
-    <div>
+    <div className="app">
       <h1>Welcome to Spokenarr</h1>
-      <p>Your frontend build is working!</p>
+      <p>This is your running React frontend!</p>
     </div>
   );
 }
