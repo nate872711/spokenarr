@@ -9,6 +9,7 @@ const config: StorybookConfig = {
   stories: [
     "../src/**/*.mdx",
     "../src/**/*.stories.@(js|jsx|ts|tsx)",
+    "!../src/stories/StoryPage.stories.tsx", // 👈 exclude duplicate or broken story
   ],
 
   addons: [
@@ -19,7 +20,7 @@ const config: StorybookConfig = {
   ],
 
   viteFinal: async (viteConfig) => {
-    // Fix for file watching and rebuilds in Docker/CI
+    // Helps detect file changes in Docker/OrbStack
     viteConfig.server = viteConfig.server || {};
     viteConfig.server.watch = { usePolling: true };
     return viteConfig;
