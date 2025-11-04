@@ -1,36 +1,30 @@
-# --- Build stage ---
+# Stage 1: Build the frontend
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy dependency files and install
+# Copy dependency files and install first for caching
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy all source code
+# Copy the rest of the frontend code (this is the fix)
 COPY . .
 
-# Build both app and Storybook
-RUN npm run build || echo "Vite build skipped or failed"
-RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build skipped or failed"
+# Build both the main app and Storybook
+RUN npm run build
+RUN npm run build-storybook -- --output-dir storybook-static
 
-# --- Runtime stage ---
-FROM nginx:stable-alpine AS runtime
-
-# Set working directory
-WORKDIR /usr/share/nginx/html
+# Stage 2: Serve the app with Nginx
+FROM nginx:stable-alpine
 
 # Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy Vite build output
-COPY --from=build /app/dist ./
-
-# Copy Storybook output
-COPY --from=build /app/storybook-static ./storybook
+# Copy built frontend and Storybook
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
