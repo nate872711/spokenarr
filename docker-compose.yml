@@ -37,7 +37,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      no_cache: true
+      args:
+        - NODE_ENV=production
     image: nate8727/spokenarr-web:latest
     depends_on:
       - api
