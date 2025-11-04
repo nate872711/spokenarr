@@ -12,7 +12,7 @@
 
 _Download, organize, and track your audiobooks automatically._
 
-*** This a work in progress ***
+*** Spokenarr is currently in beta and a work in progress ***
 </div>
 
 ---
