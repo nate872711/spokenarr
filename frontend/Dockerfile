@@ -2,29 +2,29 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Install dependencies
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy all source files and build both the main app and Storybook
+# Copy source code and build both app and storybook
 COPY . .
 RUN npm run build || echo "Main build failed or skipped"
-RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build skipped"
+RUN npm run build-storybook -- --output-dir storybook-static || echo "Storybook build failed"
 
 # ---------- Production Stage ----------
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 
-# Copy any existing frontend build (handles CRA, Vite, or Next.js outputs gracefully)
+# Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy main web app build output (Vite/CRA)
+# Adjust this line depending on your frontend framework
+COPY --from=build /app/dist ./  # For Vite
+# COPY --from=build /app/build ./  # Uncomment this line instead if it’s React CRA
+
+# Copy Storybook to a subpath
 COPY --from=build /app/storybook-static ./storybook
 
-# Use shell to copy whichever output folder exists
-RUN mkdir -p /usr/share/nginx/html && \
-    if [ -d /app/build ]; then cp -r /app/build/* .; \
-    elif [ -d /app/dist ]; then cp -r /app/dist/* .; \
-    elif [ -d /app/out ]; then cp -r /app/out/* .; \
-    else echo "⚠️ No build output found!"; fi
-
-EXPOSE 3000
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
