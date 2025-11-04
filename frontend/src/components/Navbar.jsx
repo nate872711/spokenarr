@@ -1,37 +1,15 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
-
-const navItems = [
-  { path: "/", label: "Dashboard" },
-  { path: "/library", label: "Library" },
-  { path: "/downloads", label: "Downloads" },
-  { path: "/discover", label: "Discover" },
-  { path: "/settings", label: "Settings" },
-];
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
-    <nav className="bg-gray-950 text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-indigo-400">Spokenarr</h1>
-        <div className="flex space-x-6">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `text-sm uppercase tracking-wide ${
-                  isActive
-                    ? "text-indigo-400 border-b-2 border-indigo-400"
-                    : "text-gray-400 hover:text-white"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      </div>
+    <nav className="bg-gray-800 text-white px-6 py-4 shadow-md">
+      <ul className="flex space-x-6 text-lg font-semibold">
+        <li><Link to="/">Home</Link></li>
+        <li><Link to="/library">Library</Link></li>
+        <li><Link to="/discover">Discover</Link></li>
+        <li><Link to="/downloads">Downloads</Link></li>
+        <li><Link to="/settings">Settings</Link></li>
+      </ul>
     </nav>
   );
 }
