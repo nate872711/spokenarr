@@ -1,18 +1,18 @@
 import App from '../App';
 
-export default {
-  title: 'Pages/Home',
-  component: App,
-};
-
-export const Default = () => <App />;
-
-// frontend/src/stories/Discover.stories.jsx
-import Discover from '../pages/Discover';
 
 export default {
-  title: 'Pages/Discover',
-  component: Discover,
+title: 'Pages/Home',
+component: App,
+parameters: {
+layout: 'fullscreen',
+backgrounds: { default: 'dark' },
+},
+argTypes: {
+title: { control: 'text', defaultValue: 'Welcome to Spokenarr' },
+description: { control: 'text', defaultValue: 'Manage, download, and organize your audiobook collection seamlessly.' },
+},
 };
 
-export const Default = () => <Discover />;
+
+export const Default = (args) => <App {...args} />;
