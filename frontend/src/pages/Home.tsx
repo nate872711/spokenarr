@@ -6,37 +6,28 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center justify-center px-6 py-12">
       {/* Header */}
       <header className="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between mb-12 space-y-4 sm:space-y-0">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Spokenarr</h1>
-        <nav className="flex flex-wrap justify-center sm:justify-end space-x-6 text-sm font-medium">
-          <Link to="/" className="hover:text-blue-400 transition">
-            Home
-          </Link>
-          <Link to="/discover" className="hover:text-blue-400 transition">
-            Discover
-          </Link>
-          <Link to="/library" className="hover:text-blue-400 transition">
-            Library
-          </Link>
-          <Link to="/downloads" className="hover:text-blue-400 transition">
-            Downloads
-          </Link>
-          <Link to="/settings" className="hover:text-blue-400 transition">
-            Settings
-          </Link>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Spokenarr</h1>
+        <nav className="flex flex-wrap justify-center gap-6 text-sm font-medium">
+          <Link to="/" className="hover:text-blue-400 transition">Home</Link>
+          <Link to="/discover" className="hover:text-blue-400 transition">Discover</Link>
+          <Link to="/library" className="hover:text-blue-400 transition">Library</Link>
+          <Link to="/downloads" className="hover:text-blue-400 transition">Downloads</Link>
+          <Link to="/settings" className="hover:text-blue-400 transition">Settings</Link>
         </nav>
       </header>
 
       {/* Hero Section */}
-      <main className="text-center flex flex-col items-center">
+      <main className="flex flex-col items-center text-center mt-4">
         <img
           src={logo}
           alt="Spokenarr Logo"
-          className="w-40 sm:w-56 md:w-64 lg:w-72 h-auto mb-8 rounded-lg shadow-lg object-contain"
+          className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 object-contain mb-8 drop-shadow-lg rounded-xl"
         />
 
         <h2 className="text-4xl sm:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
           Welcome to Spokenarr
         </h2>
+
         <p className="max-w-2xl text-gray-300 mb-8 text-lg">
           The intelligent audiobook manager — discover, download, and organize your collection seamlessly.
         </p>
@@ -64,15 +55,9 @@ export default function Home() {
           Built for seamless audiobook automation — discover, download, and organize effortlessly.
         </p>
         <div className="flex justify-center space-x-4 mt-2">
-          <a href="https://github.com" className="hover:text-white transition">
-            GitHub
-          </a>
-          <a href="#" className="hover:text-white transition">
-            Privacy
-          </a>
-          <a href="#" className="hover:text-white transition">
-            Terms
-          </a>
+          <a href="https://github.com" className="hover:text-white transition">GitHub</a>
+          <a href="#" className="hover:text-white transition">Privacy</a>
+          <a href="#" className="hover:text-white transition">Terms</a>
         </div>
       </footer>
     </div>
