@@ -1,28 +1,24 @@
-import { useState } from "react";
-
 export default function Downloads() {
-  const [downloads] = useState([
-    { title: "Example Audiobook 1", progress: 75 },
-    { title: "Example Audiobook 2", progress: 100 },
-  ]);
-
   return (
-    <div className="p-8 text-white">
-      <h1 className="text-3xl font-bold mb-4">Downloads</h1>
-      {downloads.map((d, i) => (
-        <div
-          key={i}
-          className="bg-gray-800 rounded-xl p-4 mb-4 shadow-lg border border-purple-600"
-        >
-          <h2 className="font-semibold">{d.title}</h2>
-          <div className="w-full bg-gray-700 rounded-full h-3 mt-2">
-            <div
-              className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full"
-              style={{ width: `${d.progress}%` }}
-            />
+    <div className="fade-in">
+      <h1 className="text-3xl font-bold gradient-text mb-6">Downloads</h1>
+      <p className="text-gray-400 mb-8">
+        Monitor and manage ongoing audiobook downloads. Completed files will appear in your library automatically.
+      </p>
+      <div className="space-y-4">
+        {[1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="p-5 rounded-xl bg-gray-900/70 border border-gray-800 flex justify-between items-center card-hover"
+          >
+            <div>
+              <h3 className="text-lg font-semibold">Audiobook {item}</h3>
+              <p className="text-gray-400 text-sm">Downloading...</p>
+            </div>
+            <span className="text-purple-400 text-sm animate-pulse">45%</span>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
