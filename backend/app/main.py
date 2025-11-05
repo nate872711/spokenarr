@@ -1,15 +1,14 @@
 import os
-from fastapi import FastAPI, HTTPException, Response, UploadFile, File, Query
+import httpx
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, Response
 from . import db, settings_svc
 
 app = FastAPI(title="Spokenarr API")
 
 AUDIO_PATH = "/app/audio"
-LOG_PATH = "/app/logs/spokenarr.log"
 
-# ---------- Middleware ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,67 +17,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- Startup / Shutdown ----------
+
 @app.on_event("startup")
 async def startup():
     await db.connect()
     settings_svc.ensure_default()
 
+
 @app.on_event("shutdown")
 async def shutdown():
     await db.disconnect()
 
-# ---------- Health ----------
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
-# ---------- Audiobooks ----------
-@app.get("/api/audiobooks")
-async def list_audiobooks(limit: int = 25, status: str | None = None, not_status: str | None = None):
-    rows = await db.get_audiobooks(limit, status, not_status)
-    return rows
 
-# 🔍 New: Search Endpoint
-@app.get("/api/search")
-async def search_audiobooks(q: str = Query(..., description="Search by title or author")):
-    """
-    Search audiobooks by title or author.
-    """
-    try:
-        results = await db.search_audiobooks(q)
-        if not results:
-            return {"results": [], "message": "No results found"}
-        return {"results": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
-
-# ---------- Upload Cover ----------
-@app.post("/api/upload-cover")
-async def upload_cover(file: UploadFile = File(...)):
-    os.makedirs("/app/covers", exist_ok=True)
-    file_path = f"/app/covers/{file.filename}"
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-    return {"message": "Cover uploaded", "path": file_path}
-
-# ---------- Audio Serving ----------
 @app.get("/audio/{filename}")
 async def get_audio(filename: str):
     file_path = os.path.join(AUDIO_PATH, filename)
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="audio/mpeg")
-    raise HTTPException(status_code=404, detail="Audio file not found")
+    return Response(status_code=404)
 
-# ---------- Logs ----------
-@app.get("/api/logs", response_class=PlainTextResponse)
-async def get_logs(lines: int = 200):
-    if not os.path.exists(LOG_PATH):
-        raise HTTPException(status_code=404, detail="Log file not found")
 
-    try:
-        with open(LOG_PATH, "r", encoding="utf-8") as f:
-            data = f.readlines()[-lines:]
-        return "".join(data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading log file: {e}")
+@app.get("/api/audiobooks")
+async def list_audiobooks(limit: int = 25):
+    rows = await db.get_audiobooks(limit)
+    return rows
+
+
+@app.get("/api/search")
+async def search_audiobooks(q: str):
+    # 1️⃣ Search local database first
+    local = await db.search_audiobooks(q)
+    results = [dict(row) for row in local]
+
+    # 2️⃣ If no local results, fetch from Open Library
+    if not results:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(f"https://openlibrary.org/search.json?q={q}")
+            if r.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to fetch from Open Library")
+            data = r.json()
+
+            results = [
+                {
+                    "id": doc.get("key", "").replace("/works/", ""),
+                    "title": doc.get("title", "Unknown Title"),
+                    "author": ", ".join(doc.get("author_name", [])) if doc.get("author_name") else "Unknown Author",
+                    "description": doc.get("first_sentence", [""])[0] if doc.get("first_sentence") else "",
+                    "cover_url": f"https://covers.openlibrary.org/b/id/{doc.get('cover_i')}-L.jpg" if doc.get("cover_i") else "",
+                    "source": "openlibrary",
+                }
+                for doc in data.get("docs", [])[:10]
+            ]
+
+    return {"results": results}
+
+
+@app.post("/api/download/{book_id}")
+async def download_audiobook(book_id: str, title: str, author: str = "", description: str = "", cover_url: str = ""):
+    """Simulates downloading or adding an audiobook to the library."""
+    added = await db.add_audiobook(title, author, description, cover_url)
+    return {"status": "added", "book": added}
