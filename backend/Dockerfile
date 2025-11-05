@@ -1,13 +1,21 @@
+# syntax=docker/dockerfile:1.6
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
-ENV PYTHONUNBUFFERED=1
 
-COPY requirements.txt .
+# Install system dependencies for PostgreSQL
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy dependencies and install
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./app /app/app
+# Copy the rest of the backend app
+COPY . .
 
-# Run database initialization & seed before starting FastAPI
-CMD python -c "from app import db; db.init_db();" && \
-    uvicorn app.main:app --host 0.0.0.0 --port 80
+# Expose the FastAPI port
+EXPOSE 80
+
+# Start the FastAPI app with Uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
