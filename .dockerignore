@@ -1,1 +1,9 @@
-# Placeholder for .dockerignore
+node_modules
+dist
+storybook-static
+.git
+.gitignore
+.DS_Store
+.vscode
+.env
+*.log
