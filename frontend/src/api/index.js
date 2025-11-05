@@ -27,9 +27,31 @@ const mockAudiobooks = [
   { id: 6, title: "Ready Player One", author: "Ernest Cline" },
 ];
 
+const mockDownloads = [
+  { id: 1, title: "The Way of Kings", progress: 82 },
+  { id: 2, title: "Mistborn: The Final Empire", progress: 45 },
+  { id: 3, title: "The Hobbit", progress: 100 },
+];
+
+const mockSettings = {
+  downloadPath: "/app/audio",
+  autoDownload: true,
+  preferredSource: "audiobookbay",
+  notifications: true,
+};
+
 export const api = {
+  // Health endpoint (always safe to check API status)
   health: () =>
     get("/health", { status: "mocked", message: "Offline demo mode active" }),
+
+  // Audiobook library
   audiobooks: (limit = 25) =>
     get(`/audiobooks?limit=${limit}`, mockAudiobooks.slice(0, limit)),
+
+  // Download manager state
+  downloads: () => get("/downloads", mockDownloads),
+
+  // Application settings
+  settings: () => get("/settings", mockSettings),
 };
