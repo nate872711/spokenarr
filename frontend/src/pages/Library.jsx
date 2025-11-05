@@ -1,117 +1,93 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export default function Library() {
   const [audiobooks, setAudiobooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null);
-  const [formData, setFormData] = useState({ title: '', author: '' });
-
-  const loadLibrary = async () => {
-    setLoading(true);
-    const res = await fetch('/api/audiobooks');
-    const data = await res.json();
-    setAudiobooks(data);
-    setLoading(false);
-  };
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadLibrary();
+    const fetchAudiobooks = async () => {
+      try {
+        const response = await fetch("/api/audiobooks");
+        if (!response.ok) throw new Error("Failed to load library");
+        const data = await response.json();
+        setAudiobooks(data);
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load your audiobook library.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAudiobooks();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this audiobook?')) return;
-    await fetch(`/api/audiobooks/${id}`, { method: 'DELETE' });
-    loadLibrary();
-  };
-
-  const handleEdit = (book) => {
-    setEditing(book.id);
-    setFormData({ title: book.title, author: book.author });
-  };
-
-  const handleSave = async (id) => {
-    await fetch(`/api/audiobooks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    setEditing(null);
-    loadLibrary();
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white p-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">Your Library</h1>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
+      {/* Header */}
+      <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+        My Library
+      </h1>
 
-      {loading ? (
-        <p className="text-center text-gray-400">Loading your library...</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* Loading & Error States */}
+      {loading && <p className="text-gray-400">Loading your audiobooks...</p>}
+      {error && <p className="text-red-400">{error}</p>}
+
+      {/* Library Grid */}
+      {!loading && !error && audiobooks.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
           {audiobooks.map((book) => (
             <div
               key={book.id}
-              className="bg-gray-800/50 rounded-2xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
+              className="bg-white/10 rounded-xl p-4 flex flex-col items-center shadow-lg hover:bg-white/20 transition"
             >
-              <img
-                src={book.cover_url || '/assets/placeholder.png'}
-                alt={book.title}
-                className="w-full h-64 object-cover rounded-t-2xl"
-              />
-              <div className="p-4">
-                {editing === book.id ? (
-                  <>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-gray-900 text-white rounded-md p-1 mb-2"
-                    />
-                    <input
-                      type="text"
-                      value={formData.author}
-                      onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                      className="w-full bg-gray-900 text-white rounded-md p-1 mb-2"
-                    />
-                    <button
-                      onClick={() => handleSave(book.id)}
-                      className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition mr-2"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditing(null)}
-                      className="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded-md text-sm transition"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <h2 className="text-lg font-semibold text-white truncate">{book.title}</h2>
-                    <p className="text-sm text-gray-400 mb-2">{book.author}</p>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Added: {book.added_at ? new Date(book.added_at).toLocaleDateString() : '—'}
-                    </p>
-                    <div className="flex justify-between">
-                      <button
-                        onClick={() => handleEdit(book)}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-md text-sm transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(book.id)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-sm transition"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {book.cover_url ? (
+                <img
+                  src={book.cover_url}
+                  alt={book.title}
+                  className="w-32 h-48 object-cover rounded-md mb-4 shadow-md"
+                />
+              ) : (
+                <div className="w-32 h-48 bg-gray-700 flex items-center justify-center rounded-md mb-4 text-gray-400 text-sm">
+                  No Cover
+                </div>
+              )}
+
+              <h2 className="text-lg font-semibold mb-1 text-center">
+                {book.title}
+              </h2>
+              <p className="text-gray-400 text-sm mb-2 text-center">
+                {book.author || "Unknown Author"}
+              </p>
+
+              {book.year && (
+                <p className="text-xs text-gray-500 mb-2">Published: {book.year}</p>
+              )}
+
+              <span
+                className={`px-3 py-1 mt-auto rounded-md text-xs font-semibold ${
+                  book.status === "queued"
+                    ? "bg-yellow-600 text-yellow-100"
+                    : "bg-green-600 text-green-100"
+                }`}
+              >
+                {book.status === "queued" ? "Queued" : "Downloaded"}
+              </span>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && audiobooks.length === 0 && (
+        <p className="text-gray-400 mt-10 text-center">
+          🎧 No audiobooks found. Go to{" "}
+          <a href="/discover" className="text-blue-400 hover:underline">
+            Discover
+          </a>{" "}
+          to add some!
+        </p>
       )}
     </div>
   );
