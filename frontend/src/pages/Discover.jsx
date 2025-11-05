@@ -1,172 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from "react";
 
 export default function Discover() {
-  const [audiobooks, setAudiobooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    author: '',
-    cover_url: '',
-  });
-  const [uploading, setUploading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const fetchAudiobooks = async () => {
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
     setLoading(true);
+    setError("");
+    setResults([]);
+
     try {
-      const res = await fetch('/api/audiobooks');
-      const data = await res.json();
-      setAudiobooks(data);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error("Search failed");
+      const data = await response.json();
+      setResults(data.results);
     } catch (err) {
-      console.error('Failed to fetch audiobooks:', err);
+      setError("Could not load search results. Please try again later.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAudiobooks();
-  }, []);
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      const res = await fetch('/api/upload-cover', {
-        method: 'POST',
-        body: formDataUpload,
-      });
-      const data = await res.json();
-      if (res.ok && data.cover_url) {
-        setFormData((prev) => ({ ...prev, cover_url: data.cover_url }));
-      } else {
-        alert('Upload failed');
-      }
-    } catch (err) {
-      console.error('Upload error:', err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/audiobooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        setFormData({ title: '', author: '', cover_url: '' });
-        setShowModal(false);
-        fetchAudiobooks();
-      } else {
-        const err = await res.json();
-        alert(`Failed to add audiobook: ${err.detail || 'Unknown error'}`);
-      }
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    }
+  const handleQueueDownload = (title) => {
+    alert(`📚 Queued "${title}" for download! (placeholder)`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 text-white p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">Discover Audiobooks</h1>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
+      <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+        Discover Audiobooks
+      </h1>
+
+      {/* Search Bar */}
+      <form
+        onSubmit={handleSearch}
+        className="flex flex-col sm:flex-row gap-4 w-full max-w-3xl mb-10"
+      >
+        <input
+          type="text"
+          placeholder="Search by title or author..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1 px-4 py-3 rounded-lg bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
         <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-purple-700 hover:to-blue-700 transition font-semibold"
+          type="submit"
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold transition"
         >
-          + Add Audiobook
+          {loading ? "Searching..." : "Search"}
         </button>
+      </form>
+
+      {/* Error */}
+      {error && <p className="text-red-400 mb-6">{error}</p>}
+
+      {/* Results */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
+        {results.map((book) => (
+          <div
+            key={book.key}
+            className="bg-white/10 rounded-xl p-4 flex flex-col items-center shadow-lg hover:bg-white/20 transition"
+          >
+            {book.cover_url ? (
+              <img
+                src={book.cover_url}
+                alt={book.title}
+                className="w-32 h-48 object-cover rounded-md mb-4"
+              />
+            ) : (
+              <div className="w-32 h-48 bg-gray-700 flex items-center justify-center rounded-md mb-4 text-gray-400 text-sm">
+                No Cover
+              </div>
+            )}
+            <h2 className="text-lg font-semibold mb-1 text-center">
+              {book.title}
+            </h2>
+            <p className="text-gray-400 text-sm mb-2">{book.author}</p>
+            <p className="text-xs text-gray-500 mb-4">
+              {book.year ? `Published: ${book.year}` : ""}
+            </p>
+            <button
+              onClick={() => handleQueueDownload(book.title)}
+              className="mt-auto bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md text-sm font-medium transition"
+            >
+              Queue Download
+            </button>
+          </div>
+        ))}
       </div>
 
-      {loading ? (
-        <p className="text-center text-gray-400">Loading...</p>
-      ) : audiobooks.length === 0 ? (
-        <p className="text-center text-gray-400">No audiobooks yet. Add one!</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {audiobooks.map((book) => (
-            <div
-              key={book.id}
-              className="bg-gray-800/50 rounded-2xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
-            >
-              <img
-                src={book.cover_url || '/assets/placeholder.png'}
-                alt={book.title}
-                className="w-full h-64 object-cover rounded-t-2xl"
-              />
-              <div className="p-4">
-                <h2 className="text-lg font-semibold">{book.title}</h2>
-                <p className="text-sm text-gray-400">{book.author}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-2xl shadow-lg w-96 border border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-center">Add New Audiobook</h2>
-            <form onSubmit={handleSubmit}>
-              <label className="block text-sm mb-1">Title</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-                className="w-full p-2 mb-3 rounded-md bg-gray-800 text-white"
-              />
-
-              <label className="block text-sm mb-1">Author</label>
-              <input
-                type="text"
-                value={formData.author}
-                onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                required
-                className="w-full p-2 mb-3 rounded-md bg-gray-800 text-white"
-              />
-
-              <label className="block text-sm mb-1">Cover Image</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="w-full p-2 mb-4 text-gray-300"
-              />
-              {uploading && <p className="text-xs text-gray-400 mb-2">Uploading...</p>}
-              {formData.cover_url && (
-                <img
-                  src={formData.cover_url}
-                  alt="Preview"
-                  className="w-full h-40 object-cover rounded-md mb-3 border border-gray-700"
-                />
-              )}
-
-              <div className="flex justify-between">
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md font-semibold"
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Empty State */}
+      {!loading && results.length === 0 && !error && (
+        <p className="text-gray-400 mt-10">Search to discover new audiobooks!</p>
       )}
     </div>
   );
