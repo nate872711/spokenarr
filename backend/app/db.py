@@ -1,97 +1,87 @@
 import os
-from databases import Database
-from sqlalchemy import MetaData, Table, Column, Integer, String, DateTime, create_engine
-from datetime import datetime
+import databases
+import sqlalchemy
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://spokenarr:spokenarr_pass@localhost:5432/spokenarr')
-database = Database(DATABASE_URL)
-metadata = MetaData()
-
-audiobooks = Table(
-    'audiobooks', metadata,
-    Column('id', Integer, primary_key=True),
-    Column('title', String),
-    Column('author', String),
-    Column('file_path', String),
-    Column('imported_at', DateTime)
+# Load DATABASE_URL from environment or fallback
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr"
 )
 
-import random
+# Initialize async database connection
+database = databases.Database(DATABASE_URL)
+metadata = sqlalchemy.MetaData()
 
-MOCK_AUDIOBOOKS = [
-    {"id": 1, "title": "Dune", "author": "Frank Herbert"},
-    {"id": 2, "title": "Project Hail Mary", "author": "Andy Weir"},
-    {"id": 3, "title": "Mistborn", "author": "Brandon Sanderson"},
-    {"id": 4, "title": "The Martian", "author": "Andy Weir"},
-    {"id": 5, "title": "The Hobbit", "author": "J.R.R. Tolkien"},
-    {"id": 6, "title": "The Name of the Wind", "author": "Patrick Rothfuss"},
-    {"id": 7, "title": "The Way of Kings", "author": "Brandon Sanderson"},
-    {"id": 8, "title": "The Silent Patient", "author": "Alex Michaelides"},
-]
-def init_sync():
-    engine = create_engine(DATABASE_URL)
-    metadata.create_all(engine)
+# --- Table Definitions ---
+settings = sqlalchemy.Table(
+    "settings",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("download_path", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("auto_download", sqlalchemy.Boolean, nullable=False, default=True),
+    sqlalchemy.Column("notifications", sqlalchemy.Boolean, nullable=False, default=True),
+    sqlalchemy.Column("preferred_source", sqlalchemy.String, nullable=True, default="AudiobookBay"),
+)
 
-async def connect():
-    try:
-        init_sync()
-    except Exception:
-        pass
-    await database.connect()
-
-async def disconnect():
-    await database.disconnect()
-
-async def add_audiobook(record: dict):
-    query = audiobooks.insert().values(
-        title=record.get('title'),
-        author=record.get('author',''),
-        file_path=record.get('file_path',''),
-        imported_at=datetime.utcnow()
-    )
-    await database.execute(query)
-
-async def get_audiobooks(limit: int = 25):
-    """
-    Get audiobooks from database. If DB is empty or not connected, return mock data.
-    """
-    try:
-        rows = await database.fetch_all("SELECT id, title, author FROM audiobooks LIMIT :limit", values={"limit": limit})
-        if not rows:
-            return random.sample(MOCK_AUDIOBOOKS, min(limit, len(MOCK_AUDIOBOOKS)))
-        return rows
-    except Exception as e:
-        print("⚠️ Database unavailable, returning mock data:", e)
-        return random.sample(MOCK_AUDIOBOOKS, min(limit, len(MOCK_AUDIOBOOKS)))
-
-import sqlalchemy
-from sqlalchemy import Table, Column, Integer, String, MetaData
-
-metadata = MetaData()
-
-audiobooks = Table(
+audiobooks = sqlalchemy.Table(
     "audiobooks",
     metadata,
-    Column("id", Integer, primary_key=True),
-    Column("title", String),
-    Column("author", String),
-    Column("files", Integer),
-    Column("path", String),
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("title", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("author", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("cover_url", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("file_path", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("added_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
-async def insert_audiobook(audiobook: dict):
-    """Insert a new audiobook if it doesn't already exist."""
-    query = sqlalchemy.select(audiobooks).where(audiobooks.c.title == audiobook["title"])
-    existing = await database.fetch_one(query)
-    if existing:
-        print(f"📚 Skipping existing audiobook: {audiobook['title']}")
-        return
+# --- Database Engine ---
+engine = sqlalchemy.create_engine(
+    DATABASE_URL.replace("+asyncpg", ""),  # use sync engine for metadata creation
+)
 
-    insert_query = audiobooks.insert().values(
-        title=audiobook["title"],
-        author=audiobook.get("author", "Unknown"),
-        files=audiobook.get("files", 0),
-        path=audiobook.get("path", ""),
-    )
-    await database.execute(insert_query)
-    print(f"✅ Inserted audiobook: {audiobook['title']}")
+# --- Core Functions ---
+async def connect():
+    """Connect to the database."""
+    try:
+        await database.connect()
+        print("✅ Connected to database")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+
+
+async def disconnect():
+    """Disconnect from the database."""
+    try:
+        await database.disconnect()
+        print("🛑 Disconnected from database")
+    except Exception as e:
+        print(f"⚠️ Database disconnect error: {e}")
+
+
+async def fetch_one(query, values=None):
+    """Fetch a single row."""
+    return await database.fetch_one(query=query, values=values or {})
+
+
+async def fetch_all(query, values=None):
+    """Fetch multiple rows."""
+    return await database.fetch_all(query=query, values=values or {})
+
+
+async def execute(query, values=None):
+    """Execute insert/update/delete queries."""
+    return await database.execute(query=query, values=values or {})
+
+
+# --- Initialization ---
+def init_db():
+    """Ensure required tables exist."""
+    metadata.create_all(engine)
+    print("📦 Database tables ensured (settings, audiobooks).")
+
+
+# --- Example Query Methods ---
+async def get_audiobooks(limit: int = 25):
+    query = audiobooks.select().limit(limit)
+    rows = await fetch_all(query)
+    return [dict(r) for r in rows]
