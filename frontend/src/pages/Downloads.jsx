@@ -1,80 +1,101 @@
 import { useEffect, useState } from "react";
 
 export default function Downloads() {
-  const [queued, setQueued] = useState([]);
+  const [downloads, setDownloads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch queued audiobooks
-  const loadQueued = async () => {
+  // Load all non-downloaded audiobooks
+  const loadDownloads = async (showMsg = false) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/audiobooks?status=queued");
+      const res = await fetch("/api/audiobooks?status!=downloaded");
+      if (!res.ok) throw new Error("Failed to fetch downloads");
       const data = await res.json();
-      setQueued(data);
+
+      // Filter out any that might have been marked downloaded recently
+      const active = data.filter(
+        (b) => b.status !== "downloaded" && b.status !== "completed"
+      );
+      setDownloads(active);
+
+      if (active.length === 0)
+        setMessage("No active downloads — check your Library!");
+      else if (showMsg)
+        setMessage("✅ Download list refreshed successfully.");
     } catch (err) {
       console.error(err);
-      setMessage("Failed to load queued audiobooks.");
+      setMessage("Error loading downloads.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  // Mark an audiobook as downloaded
-  const markAsDownloaded = async (id) => {
-    try {
-      const formData = new FormData();
-      formData.append("audiobook_id", id);
-      formData.append("new_status", "downloaded");
-
-      const res = await fetch("/api/update-status", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        setMessage("Audiobook marked as downloaded!");
-        // Refresh queued list
-        await loadQueued();
-      } else {
-        const err = await res.json();
-        setMessage(err.detail || "Failed to update status.");
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage("An error occurred while updating the audiobook.");
-    }
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadDownloads(true);
   };
 
+  // Auto-refresh every 10s
   useEffect(() => {
-    loadQueued();
+    loadDownloads();
+    const interval = setInterval(loadDownloads, 10000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Compute progress color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "queued":
+        return "bg-yellow-500/30 border-yellow-400 text-yellow-300";
+      case "downloading":
+        return "bg-blue-500/30 border-blue-400 text-blue-300";
+      case "completed":
+        return "bg-green-500/30 border-green-400 text-green-300";
+      default:
+        return "bg-gray-500/30 border-gray-400 text-gray-300";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
-      <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
-        Downloads
-      </h1>
+      <div className="flex flex-col sm:flex-row items-center justify-between w-full max-w-6xl mb-6">
+        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-4 sm:mb-0">
+          Downloads
+        </h1>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className={`bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-md font-semibold text-white text-sm transition ${
+            refreshing ? "opacity-70 cursor-wait" : ""
+          }`}
+        >
+          {refreshing ? "Refreshing..." : "🔄 Refresh Downloads"}
+        </button>
+      </div>
 
       {message && (
-        <div className="bg-blue-500/30 border border-blue-400 px-4 py-2 rounded-md mb-6 text-center text-sm">
+        <div className="bg-blue-500/30 border border-blue-400 px-4 py-2 rounded-md mb-6 text-center text-sm w-full max-w-3xl">
           {message}
         </div>
       )}
 
       {loading ? (
-        <p className="text-gray-400">Loading queued downloads...</p>
-      ) : queued.length === 0 ? (
+        <p className="text-gray-400">Loading active downloads...</p>
+      ) : downloads.length === 0 ? (
         <p className="text-gray-400 mt-6">
-          📚 No queued audiobooks. Go to{" "}
-          <a href="/discover" className="text-blue-400 hover:underline">
-            Discover
+          ✅ All downloads complete! Check your{" "}
+          <a href="/library" className="text-blue-400 hover:underline">
+            Library
           </a>{" "}
-          to add some!
+          to listen.
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
-          {queued.map((book) => (
+          {downloads.map((book) => (
             <div
               key={book.id}
               className="bg-white/10 rounded-xl p-4 flex flex-col items-center shadow-lg hover:bg-white/20 transition"
@@ -94,16 +115,17 @@ export default function Downloads() {
               <h2 className="text-lg font-semibold mb-1 text-center">
                 {book.title}
               </h2>
-              <p className="text-gray-400 text-sm mb-2 text-center">
-                {book.author || "Unknown Author"}
+              <p className="text-gray-400 text-sm text-center mb-3">
+                {book.author || "Unknown Author"} • {book.year || "—"}
               </p>
 
-              <button
-                onClick={() => markAsDownloaded(book.id)}
-                className="mt-auto bg-green-600 hover:bg-green-500 px-5 py-2 rounded-md font-semibold text-white text-sm transition"
+              <div
+                className={`border rounded-md px-3 py-1 text-xs font-semibold uppercase ${getStatusColor(
+                  book.status
+                )}`}
               >
-                Mark as Downloaded
-              </button>
+                {book.status}
+              </div>
             </div>
           ))}
         </div>
