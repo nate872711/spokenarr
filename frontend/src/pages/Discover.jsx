@@ -5,6 +5,7 @@ export default function Discover() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [queued, setQueued] = useState([]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -26,25 +27,27 @@ export default function Discover() {
     }
   };
 
-  cconst handleQueueDownload = async (book) => {
-  try {
-    const response = await fetch("/api/queue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(book),
-    });
+  const handleQueueDownload = async (book) => {
+    try {
+      const response = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(book),
+      });
 
-    if (!response.ok) throw new Error("Failed to queue audiobook");
+      if (!response.ok) throw new Error("Failed to queue audiobook");
 
-    alert(`✅ Queued "${book.title}" successfully!`);
-  } catch (err) {
-    console.error(err);
-    alert("⚠️ Could not queue audiobook. Please try again.");
-  }
-};
+      setQueued((prev) => [...prev, book.title]);
+      alert(`✅ Queued "${book.title}" successfully!`);
+    } catch (err) {
+      console.error(err);
+      alert("⚠️ Could not queue audiobook. Please try again.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
+      {/* Page Title */}
       <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
         Discover Audiobooks
       </h1>
@@ -70,10 +73,10 @@ export default function Discover() {
         </button>
       </form>
 
-      {/* Error */}
+      {/* Error Message */}
       {error && <p className="text-red-400 mb-6">{error}</p>}
 
-      {/* Results */}
+      {/* Results Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
         {results.map((book) => (
           <div
@@ -84,25 +87,34 @@ export default function Discover() {
               <img
                 src={book.cover_url}
                 alt={book.title}
-                className="w-32 h-48 object-cover rounded-md mb-4"
+                className="w-32 h-48 object-cover rounded-md mb-4 shadow-md"
               />
             ) : (
               <div className="w-32 h-48 bg-gray-700 flex items-center justify-center rounded-md mb-4 text-gray-400 text-sm">
                 No Cover
               </div>
             )}
+
             <h2 className="text-lg font-semibold mb-1 text-center">
               {book.title}
             </h2>
-            <p className="text-gray-400 text-sm mb-2">{book.author}</p>
+            <p className="text-gray-400 text-sm mb-2 text-center">
+              {book.author}
+            </p>
             <p className="text-xs text-gray-500 mb-4">
               {book.year ? `Published: ${book.year}` : ""}
             </p>
+
             <button
               onClick={() => handleQueueDownload(book)}
-              className="mt-auto bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md text-sm font-medium transition"
+              disabled={queued.includes(book.title)}
+              className={`mt-auto px-4 py-2 rounded-md text-sm font-medium transition ${
+                queued.includes(book.title)
+                  ? "bg-green-600 cursor-not-allowed"
+                  : "bg-purple-600 hover:bg-purple-500"
+              }`}
             >
-              Queue Download
+              {queued.includes(book.title) ? "Queued ✓" : "Queue Download"}
             </button>
           </div>
         ))}
@@ -110,7 +122,9 @@ export default function Discover() {
 
       {/* Empty State */}
       {!loading && results.length === 0 && !error && (
-        <p className="text-gray-400 mt-10">Search to discover new audiobooks!</p>
+        <p className="text-gray-400 mt-10">
+          🔍 Search for an audiobook to get started!
+        </p>
       )}
     </div>
   );
