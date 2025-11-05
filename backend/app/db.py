@@ -63,3 +63,35 @@ async def get_audiobooks(limit: int = 25):
     except Exception as e:
         print("⚠️ Database unavailable, returning mock data:", e)
         return random.sample(MOCK_AUDIOBOOKS, min(limit, len(MOCK_AUDIOBOOKS)))
+
+import sqlalchemy
+from sqlalchemy import Table, Column, Integer, String, MetaData
+
+metadata = MetaData()
+
+audiobooks = Table(
+    "audiobooks",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("title", String),
+    Column("author", String),
+    Column("files", Integer),
+    Column("path", String),
+)
+
+async def insert_audiobook(audiobook: dict):
+    """Insert a new audiobook if it doesn't already exist."""
+    query = sqlalchemy.select(audiobooks).where(audiobooks.c.title == audiobook["title"])
+    existing = await database.fetch_one(query)
+    if existing:
+        print(f"📚 Skipping existing audiobook: {audiobook['title']}")
+        return
+
+    insert_query = audiobooks.insert().values(
+        title=audiobook["title"],
+        author=audiobook.get("author", "Unknown"),
+        files=audiobook.get("files", 0),
+        path=audiobook.get("path", ""),
+    )
+    await database.execute(insert_query)
+    print(f"✅ Inserted audiobook: {audiobook['title']}")
