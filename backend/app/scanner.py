@@ -13,16 +13,19 @@ def scan_audiobooks():
 
     for folder in root.iterdir():
         if folder.is_dir():
-            # Basic metadata
             title = folder.name
             author = "Unknown"
             files = [f for f in folder.glob("*.mp3")]
             if len(files) == 0:
                 continue
-            audiobooks.append({
-                "title": title,
-                "author": author,
-                "files": len(files),
-                "path": str(folder)
-            })
+            audiobook = {"title": title, "author": author, "files": len(files), "path": str(folder)}
+            audiobooks.append(audiobook)
+
+            # Store in DB if not already there
+            try:
+                db.insert_audiobook(audiobook)
+            except Exception as e:
+                print(f"DB insert failed for {title}: {e}")
+
+    print(f"✅ Scan complete: {len(audiobooks)} audiobooks found.")
     return audiobooks
