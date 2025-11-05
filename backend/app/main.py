@@ -1,18 +1,15 @@
 import os
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from . import db, settings_svc
 
 app = FastAPI(title="Spokenarr API")
 
-AUDIO_PATH = "/app/audio"
-COVERS_PATH = os.path.join(AUDIO_PATH, "covers")
+AUDIO_PATH = "/app/audio"  # Mount point for audio storage
 
-# Ensure directories exist
-os.makedirs(COVERS_PATH, exist_ok=True)
 
-# CORS
+# ---------- Middleware ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,11 +19,11 @@ app.add_middleware(
 )
 
 
+# ---------- Startup / Shutdown ----------
 @app.on_event("startup")
 async def startup():
     await db.connect()
-    if hasattr(settings_svc, "ensure_default"):
-        settings_svc.ensure_default()
+    settings_svc.ensure_default()
 
 
 @app.on_event("shutdown")
@@ -34,137 +31,123 @@ async def shutdown():
     await db.disconnect()
 
 
-# Audio and covers serving
+# ---------- Health Check ----------
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+
+# ---------- Search Audiobooks ----------
+@app.get("/api/search")
+async def search_audiobooks(q: str):
+    """
+    Simulated audiobook search.
+    In production, this can be wired to an external API (e.g. OpenLibrary, Audible, or AudiobookBay).
+    """
+    mock_results = [
+        {
+            "key": "book1",
+            "title": f"{q} Volume 1",
+            "author": "John Doe",
+            "cover_url": "https://covers.openlibrary.org/b/id/8231856-L.jpg",
+            "year": "2020",
+        },
+        {
+            "key": "book2",
+            "title": f"{q} Volume 2",
+            "author": "Jane Smith",
+            "cover_url": "https://covers.openlibrary.org/b/id/8235122-L.jpg",
+            "year": "2021",
+        },
+    ]
+    return {"results": mock_results}
+
+
+# ---------- Queue Download ----------
+@app.post("/api/queue")
+async def queue_download(book: dict):
+    """
+    Adds an audiobook entry to the database as queued for download.
+    """
+    try:
+        await db.add_audiobook(
+            title=book.get("title"),
+            author=book.get("author"),
+            cover_url=book.get("cover_url"),
+            year=book.get("year"),
+            status="queued",
+        )
+        return {"message": f"{book.get('title')} queued successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------- Get All Audiobooks ----------
+@app.get("/api/audiobooks")
+async def list_audiobooks(limit: int = 50, status: str | None = None):
+    """
+    Returns a list of audiobooks sorted by download status and newest first.
+    Optional query param: ?status=queued or ?status=downloaded
+    """
+    try:
+        base_query = """
+            SELECT id, title, author, cover_url, year, status, created_at
+            FROM audiobooks
+        """
+
+        if status:
+            base_query += " WHERE status = :status"
+
+        base_query += """
+            ORDER BY 
+                CASE 
+                    WHEN status = 'downloaded' THEN 1
+                    WHEN status = 'queued' THEN 2
+                    ELSE 3
+                END,
+                created_at DESC
+            LIMIT :limit
+        """
+
+        rows = await db.database.fetch_all(
+            base_query, {"status": status, "limit": limit}
+        )
+        return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
+
+# ---------- Update Audiobook Status ----------
+@app.post("/api/update-status")
+async def update_status(
+    audiobook_id: int = Form(...), new_status: str = Form(...)
+):
+    """
+    Update the status of a queued audiobook (e.g., from 'queued' → 'downloaded').
+    """
+    try:
+        query = """
+            UPDATE audiobooks
+            SET status = :new_status
+            WHERE id = :audiobook_id
+            RETURNING id, title, status
+        """
+        result = await db.database.fetch_one(
+            query, {"new_status": new_status, "audiobook_id": audiobook_id}
+        )
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Audiobook not found")
+
+        return {"message": f"Status updated to {new_status}", "audiobook": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------- Serve Audio Files ----------
 @app.get("/audio/{filename}")
 async def get_audio(filename: str):
     file_path = os.path.join(AUDIO_PATH, filename)
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="audio/mpeg")
     return Response(status_code=404)
-
-
-@app.get("/covers/{filename}")
-async def get_cover(filename: str):
-    file_path = os.path.join(COVERS_PATH, filename)
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="image/jpeg")
-    return Response(status_code=404)
-
-
-# Upload route
-@app.post("/api/upload-cover")
-async def upload_cover(file: UploadFile = File(...)):
-    try:
-        # Save file to /app/audio/covers/
-        file_path = os.path.join(COVERS_PATH, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-
-        # Return public URL
-        cover_url = f"/covers/{file.filename}"
-        return {"cover_url": cover_url}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
-
-
-# Health check
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
-
-
-# CRUD: Audiobooks
-@app.get("/api/audiobooks")
-async def list_audiobooks(limit: int = 25):
-    rows = await db.get_audiobooks(limit)
-    return rows
-
-
-@app.post("/api/audiobooks")
-async def create_audiobook(request: Request):
-    data = await request.json()
-    title = data.get("title")
-    author = data.get("author")
-    cover_url = data.get("cover_url", None)
-
-    if not title or not author:
-        raise HTTPException(status_code=400, detail="Title and author are required")
-
-    new_book = await db.add_audiobook(title, author, cover_url)
-    return new_book
-
-
-@app.put("/api/audiobooks/{book_id}")
-async def update_audiobook(book_id: int, request: Request):
-    data = await request.json()
-    updated = await db.update_audiobook(book_id, data)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Audiobook not found")
-    return updated
-
-
-@app.delete("/api/audiobooks/{book_id}")
-async def delete_audiobook(book_id: int):
-    result = await db.delete_audiobook(book_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Audiobook not found")
-    return {"status": "deleted", "id": book_id}
-
-import httpx
-
-@app.get("/api/search")
-async def search_audiobooks(q: str):
-    """Search open audiobook sources by title/author"""
-    if not q:
-        raise HTTPException(status_code=400, detail="Missing search query")
-
-    # Query Open Library
-    url = f"https://openlibrary.org/search.json?title={q}&limit=10"
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url)
-        data = response.json()
-
-    results = []
-    for book in data.get("docs", []):
-        title = book.get("title")
-        author = ", ".join(book.get("author_name", [])) if book.get("author_name") else "Unknown"
-        cover_id = book.get("cover_i")
-        cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else None
-
-        results.append({
-            "title": title,
-            "author": author,
-            "cover_url": cover_url,
-            "year": book.get("first_publish_year"),
-            "key": book.get("key"),
-        })
-
-    return {"results": results}
-
-from pydantic import BaseModel
-
-class QueueItem(BaseModel):
-    title: str
-    author: str
-    cover_url: str | None = None
-    year: int | None = None
-
-@app.post("/api/queue")
-async def queue_audiobook(item: QueueItem):
-    """Save a queued audiobook to the database"""
-    query = """
-        INSERT INTO audiobooks (title, author, cover_url, year, status)
-        VALUES (:title, :author, :cover_url, :year, 'queued')
-        RETURNING id
-    """
-    try:
-        result = await db.database.execute(query, {
-            "title": item.title,
-            "author": item.author,
-            "cover_url": item.cover_url,
-            "year": item.year,
-        })
-        return {"success": True, "id": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
