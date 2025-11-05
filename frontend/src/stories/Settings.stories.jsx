@@ -1,18 +1,20 @@
-import Settings from '../pages/Settings';
-
+// frontend/src/stories/Settings.stories.jsx
+import Settings from "../pages/Settings";
 
 export default {
-title: 'Pages/Settings',
-component: Settings,
-parameters: {
-layout: 'fullscreen',
-backgrounds: { default: 'dark' },
-},
-argTypes: {
-theme: { control: { type: 'select' }, options: ['dark', 'light'], defaultValue: 'dark' },
-language: { control: { type: 'select' }, options: ['English', 'Spanish', 'French'], defaultValue: 'English' },
-},
+  title: "Pages/Settings",
+  component: Settings,
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "The **Settings** page allows users to view and configure application options such as download paths, auto-download toggles, and preferred sources. This story uses mock API data to simulate live settings.",
+      },
+    },
+  },
 };
 
+export const Default = () => <Settings />;
 
-export const Default = (args) => <Settings {...args} />;
+Default.storyName = "Settings Page (Mock API)";
