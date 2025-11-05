@@ -141,3 +141,30 @@ async def search_audiobooks(q: str):
         })
 
     return {"results": results}
+
+from pydantic import BaseModel
+
+class QueueItem(BaseModel):
+    title: str
+    author: str
+    cover_url: str | None = None
+    year: int | None = None
+
+@app.post("/api/queue")
+async def queue_audiobook(item: QueueItem):
+    """Save a queued audiobook to the database"""
+    query = """
+        INSERT INTO audiobooks (title, author, cover_url, year, status)
+        VALUES (:title, :author, :cover_url, :year, 'queued')
+        RETURNING id
+    """
+    try:
+        result = await db.database.execute(query, {
+            "title": item.title,
+            "author": item.author,
+            "cover_url": item.cover_url,
+            "year": item.year,
+        })
+        return {"success": True, "id": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
