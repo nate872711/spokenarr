@@ -1,43 +1,69 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+import React, { useEffect, useState } from 'react';
 
 export default function Library() {
-  const [books, setBooks] = useState([]);
+  const [audiobooks, setAudiobooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const load = async () => {
-      const data = await api.audiobooks();
-      if (data) setBooks(data);
-      setLoading(false);
+    const fetchLibrary = async () => {
+      try {
+        const res = await fetch('/api/audiobooks');
+        if (!res.ok) throw new Error('Failed to load library');
+        const data = await res.json();
+        setAudiobooks(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-    load();
+    fetchLibrary();
   }, []);
 
   return (
-    <div className="fade-in">
-      <h1 className="text-3xl font-bold gradient-text mb-6">Your Library</h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white p-8">
+      <h1 className="text-4xl font-bold mb-8 text-center">Your Library</h1>
 
-      {loading ? (
-        <p className="text-gray-400">Loading audiobooks...</p>
-      ) : books.length === 0 ? (
-        <p className="text-gray-400">
-          No audiobooks found. Try adding some to your library.
-        </p>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {books.map((book) => (
-            <div
-              key={book.id}
-              className="p-5 bg-gray-900/70 border border-gray-800 rounded-xl card-hover"
-            >
-              <div className="h-40 bg-gradient-to-br from-blue-600/30 to-purple-600/30 rounded-lg mb-3"></div>
-              <h3 className="text-lg font-semibold">{book.title}</h3>
-              <p className="text-gray-400 text-sm">{book.author}</p>
-            </div>
-          ))}
-        </div>
+      {loading && <p className="text-center text-gray-400">Loading your library...</p>}
+      {error && <p className="text-center text-red-400">{error}</p>}
+
+      {!loading && !error && audiobooks.length === 0 && (
+        <p className="text-center text-gray-400">No audiobooks in your library yet.</p>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {audiobooks.map((book) => (
+          <div
+            key={book.id || book.title}
+            className="bg-gray-800/50 rounded-2xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
+          >
+            <img
+              src={book.cover_url || '/assets/placeholder.png'}
+              alt={book.title}
+              className="w-full h-64 object-cover rounded-t-2xl"
+            />
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-white truncate">{book.title}</h2>
+              <p className="text-sm text-gray-400 mb-2">{book.author}</p>
+              <p className="text-xs text-gray-500 mb-4">
+                Added: {book.added_at ? new Date(book.added_at).toLocaleDateString() : '—'}
+              </p>
+              <div className="flex justify-between">
+                <button className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-md text-sm transition">
+                  Edit Metadata
+                </button>
+                <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition">
+                  Change Cover
+                </button>
+                <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-sm transition">
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
