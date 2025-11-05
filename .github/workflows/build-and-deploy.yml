@@ -1,103 +1,152 @@
-name: 🚀 Build & Deploy Spokenarr (API + Web)
+name: 🚀 Build & Deploy Spokenarr
 
 on:
-  workflow_dispatch:  # manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - "frontend/**"
-      - "backend/**"
-      - ".github/workflows/build-and-deploy.yml"
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/build-and-deploy.yml'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAMESPACE: your-dockerhub-username
+  FRONTEND_IMAGE: spokenarr-web
+  BACKEND_IMAGE: spokenarr-api
 
 jobs:
   build-and-push:
-    name: 🧱 Build & Push Multi-Arch Images
+    name: 🧱 Build & Push Docker Images
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
       packages: write
 
-    env:
-      DOCKERHUB_REPO_API: nate8727/spokenarr-api
-      DOCKERHUB_REPO_WEB: nate8727/spokenarr-web
-
     steps:
-      # -------------------------------
-      # Setup
-      # -------------------------------
-      - name: 🧾 Checkout repository
+      # Checkout repo
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: 🧩 Setup QEMU (multi-arch)
-        uses: docker/setup-qemu-action@v3
+      # Get latest semantic version tag
+      - name: 🏷️ Get latest tag
+        id: get_version
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
 
-      - name: 🧱 Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # Auto bump version based on commit message
+      - name: 🔢 Determine next version
+        id: bump
+        run: |
+          LAST_VERSION=${{ steps.get_version.outputs.last_tag }}
+          echo "Last version: $LAST_VERSION"
+          IFS='.' read -r -a parts <<< "${LAST_VERSION#v}"
+          MAJOR=${parts[0]}
+          MINOR=${parts[1]}
+          PATCH=${parts[2]}
+          BUMP="patch"
 
-      - name: 🔐 Login to Docker Hub
+          if git log -1 --pretty=%B | grep -qE '^feat'; then
+            BUMP="minor"
+          elif git log -1 --pretty=%B | grep -qE '^BREAKING'; then
+            BUMP="major"
+          fi
+
+          if [ "$BUMP" = "major" ]; then
+            ((MAJOR++)); MINOR=0; PATCH=0
+          elif [ "$BUMP" = "minor" ]; then
+            ((MINOR++)); PATCH=0
+          else
+            ((PATCH++))
+          fi
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
+
+      # Log in to Docker Hub
+      - name: 🔑 Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # -------------------------------
-      # Cache layers (shared for API + Web)
-      # -------------------------------
-      - name: 💾 Cache Docker layers
-        uses: actions/cache@v4
+      # Set up Buildx with cache
+      - name: 🧰 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
 
-      # -------------------------------
-      # Build Backend API
-      # -------------------------------
-      - name: 🐍 Build & Push API Image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.DOCKERHUB_REPO_API }}:latest
-            ${{ env.DOCKERHUB_REPO_API }}:${{ github.run_number }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
-
-      # -------------------------------
-      # Build Frontend Web
-      # -------------------------------
-      - name: 🌐 Build & Push Web Image
+      # 🔹 Frontend build
+      - name: 🏗️ Build & Push Web UI
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.DOCKERHUB_REPO_WEB }}:latest
-            ${{ env.DOCKERHUB_REPO_WEB }}:${{ github.run_number }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ steps.bump.outputs.new_version }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
-      # -------------------------------
-      # Move cache for next build
-      # -------------------------------
-      - name: ♻️ Move Build Cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      # 🔹 Backend build
+      - name: 🧩 Build & Push Backend API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.BACKEND_IMAGE }}:${{ steps.bump.outputs.new_version }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
-      # -------------------------------
-      # Create Git Tag (optional)
-      # -------------------------------
-      - name: 🏷️ Create Git Tag
-        if: success()
+      # 🏷️ Create Git Tag
+      - name: 🏷️ Create & Push Git Tag
         run: |
-          VERSION="v${{ github.run_number }}"
-          git tag $VERSION
-          git push origin $VERSION
+          git tag -a "${{ steps.bump.outputs.new_version }}" -m "Release ${{ steps.bump.outputs.new_version }}"
+          git push origin "${{ steps.bump.outputs.new_version }}"
+
+      # 🧾 Generate changelog
+      - name: 🧾 Generate changelog
+        id: changelog
+        run: |
+          git log ${{ steps.get_version.outputs.last_tag }}..HEAD --pretty=format:"- %s (%h)" > CHANGELOG.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 🪄 Create GitHub Release with Docker image details
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.new_version }}
+          name: "Spokenarr Release ${{ steps.bump.outputs.new_version }}"
+          body: |
+            ## 🚀 Changes since ${{ steps.get_version.outputs.last_tag }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+
+            ### 🐳 Docker Images
+            - **Frontend (Web UI):**
+              - `docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ steps.bump.outputs.new_version }}`
+              - `docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:latest`
+            - **Backend (API):**
+              - `docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.BACKEND_IMAGE }}:${{ steps.bump.outputs.new_version }}`
+              - `docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.BACKEND_IMAGE }}:latest`
+
+            🧩 _Built and published automatically by GitHub Actions._
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
