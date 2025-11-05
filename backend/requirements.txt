@@ -1,14 +1,15 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.1
-sqlalchemy[asyncio]==2.0.30
-asyncpg==0.29.0
-databases[postgresql]==0.8.0
-python-dotenv==1.0.1
-psycopg2-binary==2.9.9
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+
+# DB stack
+SQLAlchemy==2.0.36
+databases[postgresql]==0.9.0
+asyncpg==0.30.0
+# Use binary wheels to avoid compiling libpq/psycopg from source
+psycopg[binary]==3.2.3
+
+# Uploads / forms
 python-multipart==0.0.9
-pydantic==2.9.0
-pydantic-settings==2.5.2
-aiofiles==23.2.1
-requests==2.32.3
-beautifulsoup4==4.12.3
-lxml==5.2.2
+
+# HTTP client (if you fetch from providers)
+aiohttp==3.10.10
