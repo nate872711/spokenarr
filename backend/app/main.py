@@ -1,31 +1,14 @@
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
-from pydantic import BaseModel
-import os
-
 from . import db, settings_svc
 
 app = FastAPI(title="Spokenarr API")
 
-AUDIO_PATH = "/app/audio"  # mount a folder inside container
+AUDIO_PATH = "/app/audio"
 
-
-class SettingsUpdate(BaseModel):
-    downloadPath: str
-    autoDownload: bool
-    notifications: bool
-    preferredSource: str
-
-
-@app.get("/audio/{filename}")
-async def get_audio(filename: str):
-    file_path = os.path.join(AUDIO_PATH, filename)
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="audio/mpeg")
-    return Response(status_code=404)
-
-
+# CORS for local and container-based frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,12 +21,21 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db.connect()
-    await settings_svc.ensure_default()
+    if hasattr(settings_svc, "ensure_default"):
+        settings_svc.ensure_default()
 
 
 @app.on_event("shutdown")
 async def shutdown():
     await db.disconnect()
+
+
+@app.get("/audio/{filename}")
+async def get_audio(filename: str):
+    file_path = os.path.join(AUDIO_PATH, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="audio/mpeg")
+    return Response(status_code=404)
 
 
 @app.get("/api/health")
@@ -57,17 +49,32 @@ async def list_audiobooks(limit: int = 25):
     return rows
 
 
-# 🧠 GET settings
-@app.get("/api/settings")
-async def get_settings():
-    settings = await settings_svc.get_settings()
-    if not settings:
-        settings = await settings_svc.ensure_default()
-    return settings
+@app.post("/api/audiobooks")
+async def create_audiobook(request: Request):
+    data = await request.json()
+    title = data.get("title")
+    author = data.get("author")
+    cover_url = data.get("cover_url", None)
+
+    if not title or not author:
+        raise HTTPException(status_code=400, detail="Title and author are required")
+
+    new_book = await db.add_audiobook(title, author, cover_url)
+    return new_book
 
 
-# ✏️ POST (update) settings
-@app.post("/api/settings")
-async def update_settings(new_settings: SettingsUpdate):
-    updated = await settings_svc.update_settings(new_settings.dict())
+@app.put("/api/audiobooks/{book_id}")
+async def update_audiobook(book_id: int, request: Request):
+    data = await request.json()
+    updated = await db.update_audiobook(book_id, data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Audiobook not found")
     return updated
+
+
+@app.delete("/api/audiobooks/{book_id}")
+async def delete_audiobook(book_id: int):
+    result = await db.delete_audiobook(book_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Audiobook not found")
+    return {"status": "deleted", "id": book_id}
