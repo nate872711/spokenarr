@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from . import db, settings_svc
@@ -7,8 +7,12 @@ from . import db, settings_svc
 app = FastAPI(title="Spokenarr API")
 
 AUDIO_PATH = "/app/audio"
+COVERS_PATH = os.path.join(AUDIO_PATH, "covers")
 
-# CORS for local and container-based frontend
+# Ensure directories exist
+os.makedirs(COVERS_PATH, exist_ok=True)
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,6 +34,7 @@ async def shutdown():
     await db.disconnect()
 
 
+# Audio and covers serving
 @app.get("/audio/{filename}")
 async def get_audio(filename: str):
     file_path = os.path.join(AUDIO_PATH, filename)
@@ -38,11 +43,38 @@ async def get_audio(filename: str):
     return Response(status_code=404)
 
 
+@app.get("/covers/{filename}")
+async def get_cover(filename: str):
+    file_path = os.path.join(COVERS_PATH, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/jpeg")
+    return Response(status_code=404)
+
+
+# Upload route
+@app.post("/api/upload-cover")
+async def upload_cover(file: UploadFile = File(...)):
+    try:
+        # Save file to /app/audio/covers/
+        file_path = os.path.join(COVERS_PATH, file.filename)
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # Return public URL
+        cover_url = f"/covers/{file.filename}"
+        return {"cover_url": cover_url}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+
+# Health check
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
+# CRUD: Audiobooks
 @app.get("/api/audiobooks")
 async def list_audiobooks(limit: int = 25):
     rows = await db.get_audiobooks(limit)
