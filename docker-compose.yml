@@ -22,6 +22,8 @@ services:
       - "5080:80"
     environment:
       DATABASE_URL: postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr
+    volumes:
+      - ./data/audiobooks:/data/audiobooks
 
   web:
     image: nate8727/spokenarr-web:latest
