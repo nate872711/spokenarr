@@ -1,57 +1,79 @@
 services:
-  db:
-    image: postgres:16
-    container_name: spokenarr-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # ------------------------
+  # 🧠 FASTAPI BACKEND
+  # ------------------------
+  spokenarr-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: spokenarr-api
+    env_file:
+      - ./api/.env
     ports:
-      - "5432:5432"
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./api:/app
+      - spokenarr_audio:/app/audio
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/docs || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ------------------------
+  # 🐘 POSTGRES DATABASE
+  # ------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: spokenarr-db
+    env_file:
+      - ./api/.env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - spokenarr_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 20s
 
-  api:
-    image: nate8727/spokenarr-api:latest
-    container_name: spokenarr-api
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: always
-    env_file: .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr}
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "${API_HOST_PORT:-5080}:80"
-    volumes:
-      - spokenarr_audio:/app/audio
-      - spokenarr_logs:/app/logs
-
-  web:
-    container_name: spokenarr-web
+  # ------------------------
+  # 🌐 FRONTEND WEB UI
+  # ------------------------
+  spokenarr-web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      no_cache: true
-    image: nate8727/spokenarr-web:latest
+    container_name: spokenarr-web
+    env_file:
+      - ./frontend/.env
     depends_on:
-      - api
+      spokenarr-api:
+        condition: service_healthy
     ports:
-      - "${WEB_HOST_PORT:-6080}:80"
-    environment:
-      - NODE_ENV=production
-    restart: always
+      - "5173:80"
+    volumes:
+      - ./frontend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
+# ------------------------
+# 📦 NAMED VOLUMES
+# ------------------------
 volumes:
-  postgres_data:
+  spokenarr_db_data:
   spokenarr_audio:
-  spokenarr_logs:
