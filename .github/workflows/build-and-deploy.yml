@@ -14,8 +14,6 @@ env:
   REGISTRY: docker.io
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  REPO_OWNER: ${{ github.repository_owner }}
-  REPO_NAME: ${{ github.event.repository.name }}
   WEB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-web
   API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-api
   PLATFORMS: linux/amd64,linux/arm64
@@ -64,7 +62,7 @@ jobs:
             PATCH=${parts[2]:-0}
           fi
 
-          # bump type based on last commit message
+          # bump type based on commit message
           BUMP="patch"
           MSG="$(git log -1 --pretty=%B)"
           if echo "$MSG" | grep -qiE '^feat|feature'; then
@@ -107,7 +105,7 @@ jobs:
             echo "_Built from commit: \`${{ github.sha }}\` on branch \`${{ github.ref_name }}\`_"
           } > RELEASE_BODY.md
 
-          echo "release_body<<'EOF'" >> $GITHUB_OUTPUT
+          echo "release_body<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE_BODY.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
