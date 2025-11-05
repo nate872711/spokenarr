@@ -5,29 +5,30 @@ export default function Library() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchLibrary() {
+    async function fetchAudiobooks() {
       try {
-        const res = await fetch("/api/scan");
+        const res = await fetch("/api/audiobooks");
+        if (!res.ok) throw new Error(`Error ${res.status}`);
         const data = await res.json();
-        setAudiobooks(data.audiobooks || []);
+        setAudiobooks(data || []);
       } catch (error) {
-        console.error("Failed to load library:", error);
+        console.error("Failed to fetch audiobooks:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchLibrary();
+    fetchAudiobooks();
   }, []);
 
   if (loading) {
     return <p className="p-8 text-gray-400">Loading your library...</p>;
   }
 
-  if (audiobooks.length === 0) {
+  if (!audiobooks.length) {
     return (
       <div className="p-8 text-center text-gray-400">
         <h2 className="text-2xl font-bold mb-2 text-white">No Audiobooks Found</h2>
-        <p>Place some .mp3 files inside <code>data/audiobooks/</code> and refresh.</p>
+        <p>Add .mp3 files to <code>data/audiobooks/</code> and restart the containers.</p>
       </div>
     );
   }
@@ -38,9 +39,9 @@ export default function Library() {
         Library
       </h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {audiobooks.map((book, i) => (
+        {audiobooks.map((book) => (
           <div
-            key={i}
+            key={book.id}
             className="bg-gradient-to-br from-purple-700 to-blue-700 rounded-xl p-4 shadow-lg hover:scale-105 transition-transform"
           >
             <h2 className="text-lg font-semibold truncate">{book.title}</h2>
