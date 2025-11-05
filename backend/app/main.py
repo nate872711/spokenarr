@@ -5,6 +5,8 @@ from . import db, settings_svc
 import asyncio
 from .discover import discover_new, periodic_discover
 
+from .downloader import download_audiobook
+
 app = FastAPI(title='Spokenarr API')
 
 AUDIO_PATH = "/app/audio"  # mount a folder inside container
@@ -69,3 +71,16 @@ from .discover import discover_new
 async def discover_endpoint():
     entries = await discover_new()
     return entries
+
+from pydantic import BaseModel
+
+class DownloadRequest(BaseModel):
+    title: str
+    author: str
+    link: str
+
+@app.post("/api/download")
+async def trigger_download(req: DownloadRequest):
+    """Download a single audiobook"""
+    result = await download_audiobook(req.title, req.author, req.link)
+    return {"status": "ok", "downloaded": result}
