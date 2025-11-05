@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including dev) for build
-RUN npm ci --legacy-peer-deps
+# Install dependencies (safe for when no package-lock.json exists)
+RUN npm install --legacy-peer-deps
 
 # ---------- Stage 2: Build ----------
 FROM node:20-alpine AS build
@@ -16,11 +16,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the frontend
+# Build frontend and Storybook
 RUN npm run build
 RUN npm run build-storybook -- --output-dir storybook-static
 
-# Optional: prune dev deps for smaller runtime image
+# Optional: prune dev dependencies for smaller final image
 RUN npm prune --production
 
 # ---------- Stage 3: Serve ----------
