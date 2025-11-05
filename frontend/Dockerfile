@@ -1,47 +1,33 @@
 # syntax=docker/dockerfile:1.6
 
-# ================================
-# ⚙️ STAGE 1: Build (Vite + Node)
-# ================================
-FROM node:20-alpine AS build
+# ---------- Stage 1: Dependencies ----------
+FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy dependency files
-COPY package.json package-lock.json* ./
+# Copy package files
+COPY package*.json ./
 
-# Ensure deterministic dependency installs
-RUN if [ ! -f package-lock.json ]; then \
-      echo "⚠️ No package-lock.json found — generating one..." && \
-      npm install --package-lock-only --legacy-peer-deps; \
-    fi && \
-    npm ci --legacy-peer-deps
+# Install dependencies (including dev) for build
+RUN npm ci --legacy-peer-deps
 
-# Copy project files
+# ---------- Stage 2: Build ----------
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Run Vite production build
+# Build the frontend
 RUN npm run build
-
-# Also build Storybook (optional)
 RUN npm run build-storybook -- --output-dir storybook-static
 
-# ================================
-# 🌐 STAGE 2: Serve with Nginx
-# ================================
+# Optional: prune dev deps for smaller runtime image
+RUN npm prune --production
+
+# ---------- Stage 3: Serve ----------
 FROM nginx:stable-alpine
-WORKDIR /usr/share/nginx/html
-
-# Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
-# Copy build output
-COPY --from=build /app/dist ./         # Vite build output
-COPY --from=build /app/storybook-static ./storybook
-
-# Include favicon and spinner (optional assets)
-COPY --from=build /app/public/favicon.ico ./favicon.ico
-COPY --from=build /app/public/spinner.png ./spinner.png
-
-# Performance & security headers can be managed in nginx.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
