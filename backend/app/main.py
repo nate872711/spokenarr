@@ -54,3 +54,10 @@ import asyncio
 async def scan_library():
     results = scan_audiobooks()
     return {"found": len(results), "audiobooks": results}
+
+from .discover import discover_new
+
+@app.get("/api/discover")
+async def discover_endpoint():
+    entries = await discover_new()
+    return entries
