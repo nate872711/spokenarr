@@ -4,79 +4,82 @@ export default function Discover() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [queued, setQueued] = useState([]);
+  const [message, setMessage] = useState("");
 
+  // Search audiobooks
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
-    setError("");
+    setMessage("");
     setResults([]);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      if (!response.ok) throw new Error("Search failed");
-      const data = await response.json();
-      setResults(data.results);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      setResults(data.results || []);
+      if (data.results.length === 0) setMessage("No results found.");
     } catch (err) {
-      setError("Could not load search results. Please try again later.");
       console.error(err);
+      setMessage("Failed to fetch search results.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQueueDownload = async (book) => {
+  // Queue audiobook for download
+  const queueBook = async (book) => {
     try {
-      const response = await fetch("/api/queue", {
+      const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(book),
       });
 
-      if (!response.ok) throw new Error("Failed to queue audiobook");
-
-      setQueued((prev) => [...prev, book.title]);
-      alert(`✅ Queued "${book.title}" successfully!`);
+      if (res.ok) {
+        setMessage(`✅ ${book.title} has been queued for download.`);
+      } else {
+        const err = await res.json();
+        setMessage(err.detail || "Failed to queue audiobook.");
+      }
     } catch (err) {
       console.error(err);
-      alert("⚠️ Could not queue audiobook. Please try again.");
+      setMessage("An error occurred while queueing the audiobook.");
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
-      {/* Page Title */}
-      <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+      <h1 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
         Discover Audiobooks
       </h1>
 
-      {/* Search Bar */}
       <form
         onSubmit={handleSearch}
-        className="flex flex-col sm:flex-row gap-4 w-full max-w-3xl mb-10"
+        className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl mb-8"
       >
         <input
           type="text"
-          placeholder="Search by title or author..."
+          placeholder="Search for audiobooks..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 px-4 py-3 rounded-lg bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-4 py-3 rounded-md bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold transition"
+          className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-md font-semibold shadow-md transition disabled:opacity-50"
         >
           {loading ? "Searching..." : "Search"}
         </button>
       </form>
 
-      {/* Error Message */}
-      {error && <p className="text-red-400 mb-6">{error}</p>}
+      {message && (
+        <div className="bg-blue-500/30 border border-blue-400 px-4 py-2 rounded-md mb-6 text-center text-sm">
+          {message}
+        </div>
+      )}
 
-      {/* Results Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
         {results.map((book) => (
           <div
@@ -94,38 +97,21 @@ export default function Discover() {
                 No Cover
               </div>
             )}
-
             <h2 className="text-lg font-semibold mb-1 text-center">
               {book.title}
             </h2>
-            <p className="text-gray-400 text-sm mb-2 text-center">
-              {book.author}
+            <p className="text-gray-400 text-sm mb-3 text-center">
+              {book.author || "Unknown Author"} • {book.year || "—"}
             </p>
-            <p className="text-xs text-gray-500 mb-4">
-              {book.year ? `Published: ${book.year}` : ""}
-            </p>
-
             <button
-              onClick={() => handleQueueDownload(book)}
-              disabled={queued.includes(book.title)}
-              className={`mt-auto px-4 py-2 rounded-md text-sm font-medium transition ${
-                queued.includes(book.title)
-                  ? "bg-green-600 cursor-not-allowed"
-                  : "bg-purple-600 hover:bg-purple-500"
-              }`}
+              onClick={() => queueBook(book)}
+              className="mt-auto bg-purple-600 hover:bg-purple-500 px-5 py-2 rounded-md font-semibold text-white text-sm transition"
             >
-              {queued.includes(book.title) ? "Queued ✓" : "Queue Download"}
+              Queue for Download
             </button>
           </div>
         ))}
       </div>
-
-      {/* Empty State */}
-      {!loading && results.length === 0 && !error && (
-        <p className="text-gray-400 mt-10">
-          🔍 Search for an audiobook to get started!
-        </p>
-      )}
     </div>
   );
 }
