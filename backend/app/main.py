@@ -110,3 +110,34 @@ async def delete_audiobook(book_id: int):
     if not result:
         raise HTTPException(status_code=404, detail="Audiobook not found")
     return {"status": "deleted", "id": book_id}
+
+import httpx
+
+@app.get("/api/search")
+async def search_audiobooks(q: str):
+    """Search open audiobook sources by title/author"""
+    if not q:
+        raise HTTPException(status_code=400, detail="Missing search query")
+
+    # Query Open Library
+    url = f"https://openlibrary.org/search.json?title={q}&limit=10"
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(url)
+        data = response.json()
+
+    results = []
+    for book in data.get("docs", []):
+        title = book.get("title")
+        author = ", ".join(book.get("author_name", [])) if book.get("author_name") else "Unknown"
+        cover_id = book.get("cover_i")
+        cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else None
+
+        results.append({
+            "title": title,
+            "author": author,
+            "cover_url": cover_url,
+            "year": book.get("first_publish_year"),
+            "key": book.get("key"),
+        })
+
+    return {"results": results}
