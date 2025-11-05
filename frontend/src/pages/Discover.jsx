@@ -26,9 +26,22 @@ export default function Discover() {
     }
   };
 
-  const handleQueueDownload = (title) => {
-    alert(`📚 Queued "${title}" for download! (placeholder)`);
-  };
+  cconst handleQueueDownload = async (book) => {
+  try {
+    const response = await fetch("/api/queue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(book),
+    });
+
+    if (!response.ok) throw new Error("Failed to queue audiobook");
+
+    alert(`✅ Queued "${book.title}" successfully!`);
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Could not queue audiobook. Please try again.");
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center px-6 py-12">
@@ -86,7 +99,7 @@ export default function Discover() {
               {book.year ? `Published: ${book.year}` : ""}
             </p>
             <button
-              onClick={() => handleQueueDownload(book.title)}
+              onClick={() => handleQueueDownload(book)}
               className="mt-auto bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md text-sm font-medium transition"
             >
               Queue Download
