@@ -1,32 +1,34 @@
-import os, json
-from pathlib import Path
-SETTINGS_PATH = os.getenv('SETTINGS_PATH', '/app/config/settings.json')
+from . import db
 
-_default = {
-  'ProwlarrUrl': '',
-  'ProwlarrApiKey': '',
-  'AudiobookBayUrl': 'https://audiobookbay.is',
-  'DelugeUrl': '',
-  'DelugePassword': '',
-  'NZBGetUrl': '',
-  'NZBGetUsername': '',
-  'NZBGetPassword': '',
-  'DownloadsCompletedPath': '/data/downloads/completed'
+DEFAULT_SETTINGS = {
+    "downloadPath": "/app/audio",
+    "autoDownload": True,
+    "notifications": True,
+    "preferredSource": "AudiobookBay",
 }
 
-def ensure_default():
-    p = Path(SETTINGS_PATH)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    if not p.exists():
-        p.write_text(json.dumps(_default, indent=2))
+async def ensure_default():
+    """Ensure at least one settings row exists."""
+    existing = await db.fetch_one("SELECT * FROM settings LIMIT 1;")
+    if not existing:
+        await db.execute(
+            "INSERT INTO settings (download_path, auto_download, notifications, preferred_source) VALUES (:p, :a, :n, :s)",
+            {
+                "p": DEFAULT_SETTINGS["downloadPath"],
+                "a": DEFAULT_SETTINGS["autoDownload"],
+                "n": DEFAULT_SETTINGS["notifications"],
+                "s": DEFAULT_SETTINGS["preferredSource"],
+            },
+        )
+    return await get_settings()
 
-def get():
-    p = Path(SETTINGS_PATH)
-    if not p.exists():
-        ensure_default()
-    return json.loads(p.read_text())
-
-def save(updates: dict):
-    s = get()
-    s.update(updates)
-    Path(SETTINGS_PATH).write_text(json.dumps(s, indent=2))
+async def get_settings():
+    row = await db.fetch_one("SELECT * FROM settings LIMIT 1;")
+    if not row:
+        return None
+    return {
+        "downloadPath": row["download_path"],
+        "autoDownload": row["auto_download"],
+        "notifications": row["notifications"],
+        "preferredSource": row["preferred_source"],
+    }
