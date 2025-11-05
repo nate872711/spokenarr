@@ -7,6 +7,8 @@ from .discover import discover_new, periodic_discover
 
 from .downloader import download_audiobook
 
+from .download_queue import download_queue
+
 app = FastAPI(title='Spokenarr API')
 
 AUDIO_PATH = "/app/audio"  # mount a folder inside container
@@ -33,6 +35,7 @@ from .db import metadata, database, audiobooks
 async def startup():
     await db.connect()
     settings_svc.ensure_default()
+    asyncio.create_task(download_queue.start())
     engine = sqlalchemy.create_engine(str(database.url))
     metadata.create_all(engine)
     print("🗃 Database tables ensured.")
@@ -84,3 +87,21 @@ async def trigger_download(req: DownloadRequest):
     """Download a single audiobook"""
     result = await download_audiobook(req.title, req.author, req.link)
     return {"status": "ok", "downloaded": result}
+
+from pydantic import BaseModel
+
+class DownloadRequest(BaseModel):
+    title: str
+    author: str
+    link: str
+
+@app.post("/api/queue")
+async def queue_download(req: DownloadRequest):
+    """Add audiobook to background download queue"""
+    result = await download_queue.add(req.title, req.author, req.link)
+    return result
+
+@app.get("/api/queue/status")
+async def get_queue_status():
+    """Get queue status for all downloads"""
+    return await download_queue.get_status()
