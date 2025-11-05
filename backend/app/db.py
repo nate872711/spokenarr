@@ -34,14 +34,13 @@ audiobooks = sqlalchemy.Table(
     sqlalchemy.Column("added_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
-# --- Database Engine ---
+# --- Engine ---
 engine = sqlalchemy.create_engine(
-    DATABASE_URL.replace("+asyncpg", ""),  # use sync engine for metadata creation
+    DATABASE_URL.replace("+asyncpg", ""),  # use sync engine for schema creation
 )
 
-# --- Core Functions ---
+# --- Core Database Functions ---
 async def connect():
-    """Connect to the database."""
     try:
         await database.connect()
         print("✅ Connected to database")
@@ -50,7 +49,6 @@ async def connect():
 
 
 async def disconnect():
-    """Disconnect from the database."""
     try:
         await database.disconnect()
         print("🛑 Disconnected from database")
@@ -59,25 +57,62 @@ async def disconnect():
 
 
 async def fetch_one(query, values=None):
-    """Fetch a single row."""
     return await database.fetch_one(query=query, values=values or {})
 
 
 async def fetch_all(query, values=None):
-    """Fetch multiple rows."""
     return await database.fetch_all(query=query, values=values or {})
 
 
 async def execute(query, values=None):
-    """Execute insert/update/delete queries."""
     return await database.execute(query=query, values=values or {})
 
 
-# --- Initialization ---
+# --- Initialization & Seeding ---
 def init_db():
-    """Ensure required tables exist."""
+    """Ensure required tables exist and seed with initial data if empty."""
     metadata.create_all(engine)
     print("📦 Database tables ensured (settings, audiobooks).")
+    seed_audiobooks()
+
+
+def seed_audiobooks():
+    """Populate the audiobooks table with some sample entries if empty."""
+    with engine.connect() as conn:
+        count = conn.execute(sqlalchemy.text("SELECT COUNT(*) FROM audiobooks")).scalar()
+        if count == 0:
+            print("📚 Seeding sample audiobooks...")
+            sample_data = [
+                {
+                    "title": "The Hobbit",
+                    "author": "J.R.R. Tolkien",
+                    "cover_url": "https://covers.openlibrary.org/b/id/6979861-L.jpg",
+                    "file_path": "/app/audio/the_hobbit.mp3",
+                },
+                {
+                    "title": "1984",
+                    "author": "George Orwell",
+                    "cover_url": "https://covers.openlibrary.org/b/id/7222246-L.jpg",
+                    "file_path": "/app/audio/1984.mp3",
+                },
+                {
+                    "title": "Dune",
+                    "author": "Frank Herbert",
+                    "cover_url": "https://covers.openlibrary.org/b/id/8100924-L.jpg",
+                    "file_path": "/app/audio/dune.mp3",
+                },
+                {
+                    "title": "The Martian",
+                    "author": "Andy Weir",
+                    "cover_url": "https://covers.openlibrary.org/b/id/8379081-L.jpg",
+                    "file_path": "/app/audio/the_martian.mp3",
+                },
+            ]
+            for book in sample_data:
+                conn.execute(audiobooks.insert().values(**book))
+            print(f"✅ Seeded {len(sample_data)} audiobooks.")
+        else:
+            print("ℹ️ Audiobooks already present; skipping seed.")
 
 
 # --- Example Query Methods ---
