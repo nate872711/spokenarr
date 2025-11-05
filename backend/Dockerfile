@@ -1,44 +1,32 @@
 # syntax=docker/dockerfile:1.6
 
-##################################
-# Stage 1: Build dependencies
-##################################
-FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
+FROM python:3.11-slim AS base
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Create non-root user (optional but good practice)
+RUN useradd -u 10001 -m appuser
+
 WORKDIR /app
 
-# Install build tools safely for both archs
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ libpq-dev curl && \
-    rm -rf /var/lib/apt/lists/*
+# System deps kept minimal (no gcc/libpq needed because we use psycopg[binary])
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      tini \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
-COPY requirements.txt ./
+# Copy and install Python deps first for better layer cache
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Precompile dependencies into wheels
-RUN pip install --upgrade pip setuptools wheel && \
-    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
+# Copy app source
+COPY app ./app
 
+# Expose HTTP port
+EXPOSE 80
 
-##################################
-# Stage 2: Final runtime
-##################################
-FROM python:3.11-slim
-WORKDIR /app
+# Use tini as entrypoint for clean signal handling
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy prebuilt wheels and install
-COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache-dir /wheels/*
-
-# Copy application code
-COPY . .
-
-# Expose API port
-EXPOSE 8000
-
-# Run the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
