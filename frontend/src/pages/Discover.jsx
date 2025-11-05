@@ -1,41 +1,55 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+import React, { useEffect, useState } from 'react';
 
 export default function Discover() {
-  const [books, setBooks] = useState([]);
+  const [audiobooks, setAudiobooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDiscover = async () => {
-      const data = await api.audiobooks(6);
-      if (data) setBooks(data);
-      setLoading(false);
+    const fetchAudiobooks = async () => {
+      try {
+        const res = await fetch('/api/audiobooks');
+        if (!res.ok) throw new Error('Failed to fetch audiobooks');
+        const data = await res.json();
+        setAudiobooks(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchDiscover();
+    fetchAudiobooks();
   }, []);
 
   return (
-    <div className="fade-in">
-      <h1 className="text-3xl font-bold gradient-text mb-6">
-        Discover New Audiobooks
-      </h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white p-8">
+      <h1 className="text-4xl font-bold mb-8 text-center">Discover Audiobooks</h1>
 
-      {loading ? (
-        <p className="text-gray-400">Loading recommendations...</p>
-      ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {books.map((book) => (
-            <div
-              key={book.id}
-              className="p-6 rounded-2xl bg-gray-900/70 border border-gray-800 card-hover"
-            >
-              <div className="h-40 bg-gradient-to-r from-purple-600/30 to-blue-600/30 rounded-xl mb-4"></div>
-              <h3 className="font-semibold text-lg">{book.title}</h3>
-              <p className="text-sm text-gray-400 mt-1">{book.author}</p>
-            </div>
-          ))}
-        </div>
+      {loading && <p className="text-center text-gray-400">Loading audiobooks...</p>}
+      {error && <p className="text-center text-red-400">{error}</p>}
+
+      {!loading && !error && audiobooks.length === 0 && (
+        <p className="text-center text-gray-400">No audiobooks found.</p>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {audiobooks.map((book) => (
+          <div
+            key={book.id || book.title}
+            className="bg-gray-800/50 rounded-2xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
+          >
+            <img
+              src={book.cover_url || '/assets/placeholder.png'}
+              alt={book.title}
+              className="w-full h-64 object-cover rounded-t-2xl"
+            />
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-white truncate">{book.title}</h2>
+              <p className="text-sm text-gray-400">{book.author}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
