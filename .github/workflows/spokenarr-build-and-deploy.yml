@@ -25,7 +25,7 @@ jobs:
         run: echo "date=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_OUTPUT
 
   # -------------------------------
-  # Backend (FastAPI) Build & Push
+  # Backend (FastAPI)
   # -------------------------------
   build-backend:
     name: 🧱 Build & Push Backend (FastAPI)
@@ -44,7 +44,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: 🧱 Build & Push API Image
+      - name: 🪣 Warm Buildx Cache (Backend)
+        run: |
+          docker pull nate8727/spokenarr-api:cache || true
+
+      - name: 🧱 Build & Push Backend Image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -56,7 +60,7 @@ jobs:
           cache-to: type=registry,ref=nate8727/spokenarr-api:cache,mode=max
 
   # -------------------------------
-  # Frontend (React + Nginx) Build & Push
+  # Frontend (React + Nginx)
   # -------------------------------
   build-frontend:
     name: 🌐 Build & Push Web UI (React)
@@ -75,6 +79,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: 🪣 Warm Buildx Cache (Frontend)
+        run: |
+          docker pull nate8727/spokenarr-web:cache || true
+
       - name: 🧱 Build & Push Web Image
         uses: docker/build-push-action@v5
         with:
@@ -87,7 +95,7 @@ jobs:
           cache-to: type=registry,ref=nate8727/spokenarr-web:cache,mode=max
 
   # -------------------------------
-  # Deployment (optional auto)
+  # Deployment (optional)
   # -------------------------------
   deploy-stack:
     name: 🚀 Deploy Docker Stack
