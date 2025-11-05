@@ -7,15 +7,17 @@ WORKDIR /app
 # Install system dependencies for PostgreSQL
 RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
-# Copy dependencies and install
+# Copy requirements first (for caching)
 COPY requirements.txt ./
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend app
+# Copy the rest of the backend code
 COPY . .
 
-# Expose the FastAPI port
+# Expose FastAPI port
 EXPOSE 80
 
-# Start the FastAPI app with Uvicorn
+# Run the app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
