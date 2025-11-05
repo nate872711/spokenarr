@@ -16,6 +16,18 @@ audiobooks = Table(
     Column('imported_at', DateTime)
 )
 
+import random
+
+MOCK_AUDIOBOOKS = [
+    {"id": 1, "title": "Dune", "author": "Frank Herbert"},
+    {"id": 2, "title": "Project Hail Mary", "author": "Andy Weir"},
+    {"id": 3, "title": "Mistborn", "author": "Brandon Sanderson"},
+    {"id": 4, "title": "The Martian", "author": "Andy Weir"},
+    {"id": 5, "title": "The Hobbit", "author": "J.R.R. Tolkien"},
+    {"id": 6, "title": "The Name of the Wind", "author": "Patrick Rothfuss"},
+    {"id": 7, "title": "The Way of Kings", "author": "Brandon Sanderson"},
+    {"id": 8, "title": "The Silent Patient", "author": "Alex Michaelides"},
+]
 def init_sync():
     engine = create_engine(DATABASE_URL)
     metadata.create_all(engine)
@@ -40,6 +52,14 @@ async def add_audiobook(record: dict):
     await database.execute(query)
 
 async def get_audiobooks(limit: int = 25):
-    query = audiobooks.select().limit(limit)
-    rows = await database.fetch_all(query)
-    return [dict(r) for r in rows]
+    """
+    Get audiobooks from database. If DB is empty or not connected, return mock data.
+    """
+    try:
+        rows = await database.fetch_all("SELECT id, title, author FROM audiobooks LIMIT :limit", values={"limit": limit})
+        if not rows:
+            return random.sample(MOCK_AUDIOBOOKS, min(limit, len(MOCK_AUDIOBOOKS)))
+        return rows
+    except Exception as e:
+        print("⚠️ Database unavailable, returning mock data:", e)
+        return random.sample(MOCK_AUDIOBOOKS, min(limit, len(MOCK_AUDIOBOOKS)))
