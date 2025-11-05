@@ -1,31 +1,44 @@
 # syntax=docker/dockerfile:1.6
 
-# ---------- Base image ----------
-FROM python:3.11-slim AS base
+##################################
+# Stage 1: Build dependencies
+##################################
+FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
 WORKDIR /app
 
-# ---------- System dependencies ----------
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install build tools safely for both archs
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc g++ libpq-dev curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# ---------- Copy and install dependencies ----------
-COPY requirements.txt .
+# Copy dependency files
+COPY requirements.txt ./
 
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Precompile dependencies into wheels
+RUN pip install --upgrade pip setuptools wheel && \
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
-# ---------- Copy source code ----------
+
+##################################
+# Stage 2: Final runtime
+##################################
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy prebuilt wheels and install
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache-dir /wheels/*
+
+# Copy application code
 COPY . .
 
-# ---------- Environment setup ----------
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
-# ---------- Expose FastAPI port ----------
+# Expose API port
 EXPOSE 8000
 
-# ---------- Start FastAPI ----------
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the FastAPI app
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
