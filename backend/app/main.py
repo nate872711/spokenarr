@@ -21,12 +21,16 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-@app.on_event('startup')
+import sqlalchemy
+from .db import metadata, database, audiobooks
+
+@app.on_event("startup")
 async def startup():
     await db.connect()
     settings_svc.ensure_default()
-    # Run initial scan automatically
-    print("🔍 Scanning audiobook library on startup...")
+    engine = sqlalchemy.create_engine(str(database.url))
+    metadata.create_all(engine)
+    print("🗃 Database tables ensured.")
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, scan_audiobooks)
 
