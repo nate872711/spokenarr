@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from . import db, settings_svc
 
+import asyncio
+from .discover import discover_new, periodic_discover
+
 app = FastAPI(title='Spokenarr API')
 
 AUDIO_PATH = "/app/audio"  # mount a folder inside container
@@ -33,6 +36,11 @@ async def startup():
     print("🗃 Database tables ensured.")
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, scan_audiobooks)
+
+    # Run discovery once at startup
+    asyncio.create_task(discover_new())
+    # Schedule automatic updates every 12 hours
+    asyncio.create_task(periodic_discover())
 
 @app.on_event('shutdown')
 async def shutdown():
