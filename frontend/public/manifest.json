@@ -1,15 +1,32 @@
 {
   "name": "Spokenarr",
   "short_name": "Spokenarr",
+  "description": "The intelligent audiobook manager — discover, download, and organize your collection seamlessly.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0d0d0f",
-  "theme_color": "#ff7a00",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "scope": "/",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "spinner.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }
