@@ -1,119 +1,65 @@
 import os
 import sqlalchemy
 import databases
+from sqlalchemy import Table, Column, Integer, String, MetaData, Text
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@spokenarr-db:5432/spokenarr")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://spokenarr:spokenarr_pass@spokenarr-db:5432/spokenarr")
 
-# Create async database connection
 database = databases.Database(DATABASE_URL)
-metadata = sqlalchemy.MetaData()
+metadata = MetaData()
 
-# Define SQLAlchemy table (if not auto-managed elsewhere)
-audiobooks = sqlalchemy.Table(
+audiobooks = Table(
     "audiobooks",
     metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("title", sqlalchemy.String(255)),
-    sqlalchemy.Column("author", sqlalchemy.String(255)),
-    sqlalchemy.Column("description", sqlalchemy.Text),
-    sqlalchemy.Column("cover_url", sqlalchemy.String(255)),
-    sqlalchemy.Column("status", sqlalchemy.String(50)),
+    Column("id", Integer, primary_key=True),
+    Column("title", String(255), nullable=False),
+    Column("author", String(255)),
+    Column("description", Text),
+    Column("cover_url", String(500)),
 )
 
-# Sync engine for migrations / setup
 engine = sqlalchemy.create_engine(str(DATABASE_URL).replace("+asyncpg", ""))
+metadata.create_all(engine)
 
 
-# ---------- CONNECTION MANAGEMENT ----------
 async def connect():
-    """Connect to the database."""
-    if not database.is_connected:
-        await database.connect()
+    await database.connect()
 
 
 async def disconnect():
-    """Disconnect from the database."""
-    if database.is_connected:
-        await database.disconnect()
+    await database.disconnect()
 
 
-# ---------- DATABASE QUERIES ----------
-async def get_audiobooks(limit: int = 25, status: str | None = None, not_status: str | None = None):
-    """Fetch audiobooks with optional status filtering."""
-    if not database.is_connected:
-        await connect()
-
-    query = "SELECT id, title, author, description, cover_url, status FROM audiobooks WHERE 1=1"
-    values = {}
-
-    if status:
-        query += " AND status = :status"
-        values["status"] = status
-
-    if not_status:
-        query += " AND status != :not_status"
-        values["not_status"] = not_status
-
-    query += " ORDER BY id DESC LIMIT :limit"
-    values["limit"] = limit
-
-    rows = await database.fetch_all(query=query, values=values)
-    return [dict(row) for row in rows]
+async def get_audiobooks(limit: int = 25):
+    query = audiobooks.select().limit(limit)
+    return await database.fetch_all(query)
 
 
-async def get_audiobook(id: int):
-    """Get a single audiobook by ID."""
-    if not database.is_connected:
-        await connect()
-
-    row = await database.fetch_one("SELECT * FROM audiobooks WHERE id = :id", {"id": id})
-    return dict(row) if row else None
-
-
-async def add_audiobook(title: str, author: str, description: str = "", cover_url: str = "", status: str = "new"):
-    """Add a new audiobook record."""
-    if not database.is_connected:
-        await connect()
-
-    query = """
-        INSERT INTO audiobooks (title, author, description, cover_url, status)
-        VALUES (:title, :author, :description, :cover_url, :status)
-        RETURNING id
-    """
-    values = {
-        "title": title,
-        "author": author,
-        "description": description,
-        "cover_url": cover_url,
-        "status": status,
-    }
-
-    new_id = await database.execute(query=query, values=values)
-    return {"id": new_id, "title": title, "author": author, "status": status}
+async def search_audiobooks(query: str, limit: int = 10):
+    q = f"%{query.lower()}%"
+    query = (
+        audiobooks.select()
+        .where(
+            sqlalchemy.or_(
+                sqlalchemy.func.lower(audiobooks.c.title).like(q),
+                sqlalchemy.func.lower(audiobooks.c.author).like(q),
+            )
+        )
+        .limit(limit)
+    )
+    return await database.fetch_all(query)
 
 
-async def update_audiobook_status(id: int, status: str):
-    """Update audiobook download/processing status."""
-    if not database.is_connected:
-        await connect()
+async def add_audiobook(title: str, author: str = "", description: str = "", cover_url: str = ""):
+    """Add a new audiobook to the library if not already present."""
+    existing = await database.fetch_one(
+        audiobooks.select().where(audiobooks.c.title == title)
+    )
+    if existing:
+        return existing
 
-    query = "UPDATE audiobooks SET status = :status WHERE id = :id"
-    await database.execute(query=query, values={"id": id, "status": status})
-    return {"id": id, "status": status}
-
-
-async def search_audiobooks(query: str):
-    """Search audiobooks by title or author."""
-    if not database.is_connected:
-        await connect()
-
-    sql = """
-        SELECT id, title, author, description, cover_url, status
-        FROM audiobooks
-        WHERE LOWER(title) LIKE LOWER(:q)
-           OR LOWER(author) LIKE LOWER(:q)
-        ORDER BY title ASC
-        LIMIT 50
-    """
-    rows = await database.fetch_all(query=sql, values={"q": f"%{query}%"})
-    return [dict(row) for row in rows]
+    query = audiobooks.insert().values(
+        title=title, author=author, description=description, cover_url=cover_url
+    )
+    new_id = await database.execute(query)
+    return {"id": new_id, "title": title, "author": author, "description": description, "cover_url": cover_url}
