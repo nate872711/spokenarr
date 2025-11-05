@@ -4,4 +4,6 @@ databases[postgresql]
 sqlalchemy
 pydantic
 python-dotenv
+asyncpg
+psycopg2-binary
 httpx
