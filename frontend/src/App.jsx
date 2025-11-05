@@ -6,6 +6,7 @@ import Library from "./pages/Library";
 import Downloads from "./pages/Downloads";
 import Settings from "./pages/Settings";
 import DownloadManager from "./components/DownloadManager";
+import Footer from "./components/Footer";
 import { useState, useEffect } from "react";
 
 export default function App() {
@@ -37,3 +38,15 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-blue-950 to-purple-950 text-white flex flex-col">
         {/* Top navigation bar */}
         <Navbar
+
+  function App() {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow">
+          {/* your routes here */}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
