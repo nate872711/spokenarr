@@ -5,14 +5,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#1e3a8a] text-white flex flex-col items-center justify-center px-6 py-12">
       {/* Header */}
-      <header className="w-full max-w-5xl flex items-center justify-between mb-12">
+      <header className="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between mb-12 space-y-4 sm:space-y-0">
         <h1 className="text-3xl font-bold text-white tracking-tight">Spokenarr</h1>
-        <nav className="flex space-x-6 text-sm font-medium">
-          <Link to="/" className="hover:text-blue-400 transition">Home</Link>
-          <Link to="/discover" className="hover:text-blue-400 transition">Discover</Link>
-          <Link to="/library" className="hover:text-blue-400 transition">Library</Link>
-          <Link to="/downloads" className="hover:text-blue-400 transition">Downloads</Link>
-          <Link to="/settings" className="hover:text-blue-400 transition">Settings</Link>
+        <nav className="flex flex-wrap justify-center sm:justify-end space-x-6 text-sm font-medium">
+          <Link to="/" className="hover:text-blue-400 transition">
+            Home
+          </Link>
+          <Link to="/discover" className="hover:text-blue-400 transition">
+            Discover
+          </Link>
+          <Link to="/library" className="hover:text-blue-400 transition">
+            Library
+          </Link>
+          <Link to="/downloads" className="hover:text-blue-400 transition">
+            Downloads
+          </Link>
+          <Link to="/settings" className="hover:text-blue-400 transition">
+            Settings
+          </Link>
         </nav>
       </header>
 
@@ -21,7 +31,7 @@ export default function Home() {
         <img
           src={logo}
           alt="Spokenarr Logo"
-          className="w-64 h-64 sm:w-80 sm:h-80 object-contain mb-8 drop-shadow-lg"
+          className="w-40 sm:w-56 md:w-64 lg:w-72 h-auto mb-8 rounded-lg shadow-lg object-contain"
         />
 
         <h2 className="text-4xl sm:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
@@ -54,9 +64,15 @@ export default function Home() {
           Built for seamless audiobook automation — discover, download, and organize effortlessly.
         </p>
         <div className="flex justify-center space-x-4 mt-2">
-          <a href="https://github.com" className="hover:text-white transition">GitHub</a>
-          <a href="#" className="hover:text-white transition">Privacy</a>
-          <a href="#" className="hover:text-white transition">Terms</a>
+          <a href="https://github.com" className="hover:text-white transition">
+            GitHub
+          </a>
+          <a href="#" className="hover:text-white transition">
+            Privacy
+          </a>
+          <a href="#" className="hover:text-white transition">
+            Terms
+          </a>
         </div>
       </footer>
     </div>
