@@ -7,12 +7,16 @@ DEFAULT_SETTINGS = {
     "preferredSource": "AudiobookBay",
 }
 
+
 async def ensure_default():
     """Ensure at least one settings row exists."""
     existing = await db.fetch_one("SELECT * FROM settings LIMIT 1;")
     if not existing:
         await db.execute(
-            "INSERT INTO settings (download_path, auto_download, notifications, preferred_source) VALUES (:p, :a, :n, :s)",
+            """
+            INSERT INTO settings (download_path, auto_download, notifications, preferred_source)
+            VALUES (:p, :a, :n, :s)
+            """,
             {
                 "p": DEFAULT_SETTINGS["downloadPath"],
                 "a": DEFAULT_SETTINGS["autoDownload"],
@@ -21,6 +25,7 @@ async def ensure_default():
             },
         )
     return await get_settings()
+
 
 async def get_settings():
     row = await db.fetch_one("SELECT * FROM settings LIMIT 1;")
@@ -32,3 +37,24 @@ async def get_settings():
         "notifications": row["notifications"],
         "preferredSource": row["preferred_source"],
     }
+
+
+async def update_settings(new_data):
+    """Update existing settings row."""
+    await db.execute(
+        """
+        UPDATE settings
+        SET download_path = :p,
+            auto_download = :a,
+            notifications = :n,
+            preferred_source = :s
+        WHERE id = (SELECT id FROM settings LIMIT 1)
+        """,
+        {
+            "p": new_data["downloadPath"],
+            "a": new_data["autoDownload"],
+            "n": new_data["notifications"],
+            "s": new_data["preferredSource"],
+        },
+    )
+    return await get_settings()
