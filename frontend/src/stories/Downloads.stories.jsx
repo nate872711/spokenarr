@@ -9,12 +9,34 @@ export default {
     docs: {
       description: {
         component:
-          "The **Downloads** page displays active and completed audiobook downloads with live progress bars. This story uses mock data when the backend API is unavailable.",
+          "The **Downloads** page shows active and completed audiobook downloads with live progress bars. You can use the controls below to simulate different states.",
       },
+    },
+  },
+  argTypes: {
+    mockDownloads: {
+      control: "object",
+      description: "Simulated download data for visual testing",
     },
   },
 };
 
-export const Default = () => <Downloads />;
+const Template = (args) => {
+  const { mockDownloads } = args;
 
-Default.storyName = "Downloads Page (Mock API)";
+  // Mock the API response if provided via args
+  window.mockDownloads = mockDownloads;
+
+  return <Downloads />;
+};
+
+export const Default = Template.bind({});
+Default.args = {
+  mockDownloads: [
+    { id: 1, title: "The Hobbit", progress: 100 },
+    { id: 2, title: "1984", progress: 75 },
+    { id: 3, title: "Dune", progress: 30 },
+  ],
+};
+
+Default.storyName = "Downloads Page (Interactive Mock)";
