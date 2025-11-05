@@ -1,18 +1,20 @@
-import Downloads from '../pages/Downloads';
-
+// frontend/src/stories/Downloads.stories.jsx
+import Downloads from "../pages/Downloads";
 
 export default {
-title: 'Pages/Downloads',
-component: Downloads,
-parameters: {
-layout: 'fullscreen',
-backgrounds: { default: 'dark' },
-},
-argTypes: {
-activeDownloads: { control: 'number', defaultValue: 2 },
-completedDownloads: { control: 'number', defaultValue: 10 },
-},
+  title: "Pages/Downloads",
+  component: Downloads,
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "The **Downloads** page displays active and completed audiobook downloads with live progress bars. This story uses mock data when the backend API is unavailable.",
+      },
+    },
+  },
 };
 
+export const Default = () => <Downloads />;
 
-export const Default = (args) => <Downloads {...args} />;
+Default.storyName = "Downloads Page (Mock API)";
