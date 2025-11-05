@@ -4,19 +4,41 @@ export default function Discover() {
   const [audiobooks, setAudiobooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloading, setDownloading] = useState({});
 
   async function fetchDiscover(manual = false) {
     if (manual) setRefreshing(true);
     try {
       const res = await fetch("/api/discover");
-      if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       setAudiobooks(data || []);
     } catch (err) {
       console.error("Discover fetch failed:", err);
     } finally {
       setLoading(false);
-      if (manual) setRefreshing(false);
+      setRefreshing(false);
+    }
+  }
+
+  async function downloadBook(book) {
+    setDownloading((d) => ({ ...d, [book.title]: true }));
+    try {
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: book.title,
+          author: book.author,
+          link: book.link,
+        }),
+      });
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      const result = await res.json();
+      console.log("Downloaded:", result);
+    } catch (err) {
+      console.error("Download error:", err);
+    } finally {
+      setDownloading((d) => ({ ...d, [book.title]: false }));
     }
   }
 
@@ -55,11 +77,24 @@ export default function Discover() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {audiobooks.map((book) => (
             <div
-              key={book.id}
-              className="bg-gradient-to-br from-blue-700 to-purple-700 rounded-xl p-4 shadow-lg hover:scale-105 transition-transform"
+              key={book.title}
+              className="bg-gradient-to-br from-blue-700 to-purple-700 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:scale-105 transition-transform"
             >
-              <h2 className="text-lg font-semibold truncate">{book.title}</h2>
-              <p className="text-sm text-gray-300">{book.author}</p>
+              <div>
+                <h2 className="text-lg font-semibold truncate">{book.title}</h2>
+                <p className="text-sm text-gray-300">{book.author}</p>
+              </div>
+              <button
+                onClick={() => downloadBook(book)}
+                disabled={!!downloading[book.title]}
+                className={`mt-4 w-full py-2 rounded-md font-semibold ${
+                  downloading[book.title]
+                    ? "bg-gray-600 cursor-not-allowed"
+                    : "bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
+                }`}
+              >
+                {downloading[book.title] ? "Downloading..." : "📥 Download"}
+              </button>
             </div>
           ))}
         </div>
