@@ -1,40 +1,47 @@
+# syntax=docker/dockerfile:1.6
+
 # ================================
-# 🔧 STAGE 1: Build Frontend (Node)
+# ⚙️ STAGE 1: Build (Vite + Node)
 # ================================
 FROM node:20-alpine AS build
-
 WORKDIR /app
 
-# Copy dependencies first for better caching
+# Copy dependency files
 COPY package.json package-lock.json* ./
 
-# Install dependencies (force lockfile if missing)
+# Ensure deterministic dependency installs
 RUN if [ ! -f package-lock.json ]; then \
       echo "⚠️ No package-lock.json found — generating one..." && \
       npm install --package-lock-only --legacy-peer-deps; \
     fi && \
     npm ci --legacy-peer-deps
 
-# Copy source files
+# Copy project files
 COPY . .
 
-# Build frontend (React / Vite / Next — autodetect)
+# Run Vite production build
 RUN npm run build
 
-# ================================
-# 🧱 STAGE 2: Nginx Static Serve
-# ================================
-FROM nginx:1.27-alpine
+# Also build Storybook (optional)
+RUN npm run build-storybook -- --output-dir storybook-static
 
-# Copy nginx configuration
+# ================================
+# 🌐 STAGE 2: Serve with Nginx
+# ================================
+FROM nginx:stable-alpine
+WORKDIR /usr/share/nginx/html
+
+# Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built frontend to nginx html folder
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy build output
+COPY --from=build /app/dist ./         # Vite build output
+COPY --from=build /app/storybook-static ./storybook
 
-# Copy favicon and spinner (if present)
-COPY --from=build /app/public/favicon.ico /usr/share/nginx/html/favicon.ico
-COPY --from=build /app/public/spinner.png /usr/share/nginx/html/spinner.png
+# Include favicon and spinner (optional assets)
+COPY --from=build /app/public/favicon.ico ./favicon.ico
+COPY --from=build /app/public/spinner.png ./spinner.png
 
+# Performance & security headers can be managed in nginx.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
