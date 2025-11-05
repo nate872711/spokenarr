@@ -1,72 +1,85 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+// frontend/src/pages/Settings.jsx
+import React, { useEffect, useState } from "react";
 
 export default function Settings() {
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({
+    downloadPath: "",
+    autoDownload: false,
+    notifications: false,
+    preferredSource: "",
+  });
 
   useEffect(() => {
-    const loadSettings = async () => {
-      const data = await api.settings();
-      setSettings(data);
-      setLoading(false);
+    // ✅ Use Storybook mock data if present
+    if (window.mockSettings) {
+      setSettings(window.mockSettings);
+      return;
+    }
+
+    // ✅ Otherwise fetch from API
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) throw new Error("API not available");
+        const data = await res.json();
+        setSettings(data);
+      } catch {
+        // Default fallback for offline mode
+        setSettings({
+          downloadPath: "/app/audio",
+          autoDownload: true,
+          notifications: true,
+          preferredSource: "AudiobookBay",
+        });
+      }
     };
-    loadSettings();
+
+    fetchSettings();
   }, []);
 
-  if (loading)
-    return (
-      <p className="text-gray-400 fade-in">Loading settings...</p>
-    );
-
-  if (!settings)
-    return (
-      <p className="text-gray-400 fade-in">Failed to load settings.</p>
-    );
-
   return (
-    <div className="fade-in max-w-xl">
-      <h1 className="text-3xl font-bold gradient-text mb-6">
-        Application Settings
-      </h1>
+    <div className="p-8 text-white">
+      <h1 className="text-3xl font-bold mb-6">Settings</h1>
 
-      <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <span className="text-gray-300">Download Path</span>
-          <code className="text-gray-400 text-sm">
-            {settings.downloadPath}
-          </code>
+      <div className="space-y-6">
+        <div>
+          <label className="block text-gray-400 mb-1">Download Path</label>
+          <input
+            type="text"
+            value={settings.downloadPath}
+            readOnly
+            className="w-full bg-gray-800 rounded-lg p-2 border border-gray-700"
+          />
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <span className="text-gray-300">Auto Download</span>
-          <span
-            className={`px-2 py-1 rounded-md text-sm ${
-              settings.autoDownload
-                ? "bg-green-600/20 text-green-400"
-                : "bg-gray-700/50 text-gray-400"
-            }`}
-          >
-            {settings.autoDownload ? "Enabled" : "Disabled"}
-          </span>
+          <input
+            type="checkbox"
+            checked={settings.autoDownload}
+            readOnly
+            className="accent-purple-500 h-5 w-5"
+          />
         </div>
 
-        <div className="flex justify-between items-center">
-          <span className="text-gray-300">Preferred Source</span>
-          <span className="text-gray-400">{settings.preferredSource}</span>
-        </div>
-
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <span className="text-gray-300">Notifications</span>
-          <span
-            className={`px-2 py-1 rounded-md text-sm ${
-              settings.notifications
-                ? "bg-blue-600/20 text-blue-400"
-                : "bg-gray-700/50 text-gray-400"
-            }`}
-          >
-            {settings.notifications ? "On" : "Off"}
-          </span>
+          <input
+            type="checkbox"
+            checked={settings.notifications}
+            readOnly
+            className="accent-blue-500 h-5 w-5"
+          />
+        </div>
+
+        <div>
+          <label className="block text-gray-400 mb-1">Preferred Source</label>
+          <input
+            type="text"
+            value={settings.preferredSource}
+            readOnly
+            className="w-full bg-gray-800 rounded-lg p-2 border border-gray-700"
+          />
         </div>
       </div>
     </div>
