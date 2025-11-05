@@ -7,24 +7,25 @@ WORKDIR /app
 # Copy package definitions
 COPY package*.json ./
 
-# ✅ Primary install with caching
-# If the main npm registry fails or a package is missing, it retries via Yarn mirror
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-factor 3 && \
-    npm config set fetch-retry-mintimeout 2000 && \
-    npm config set fetch-retry-maxtimeout 10000 && \
-    npm ci --legacy-peer-deps || \
-    (echo "⚠️ NPM install failed — retrying with Yarn mirror..." && \
-     npm config set registry https://registry.yarnpkg.com && \
-     npm ci --legacy-peer-deps)
+# Install dependencies (generate lockfile if missing)
+RUN if [ -f package-lock.json ]; then \
+      echo "✅ Found package-lock.json, running npm ci..."; \
+      npm ci --legacy-peer-deps; \
+    else \
+      echo "⚠️  No package-lock.json found, running npm install..."; \
+      npm install --package-lock-only --legacy-peer-deps && \
+      npm install --legacy-peer-deps; \
+    fi
 
 # ---------- Stage 2: build ----------
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# ✅ Build frontend (Vite + Storybook)
+# Build Vite app & Storybook
 RUN npm run build
 RUN npm run build-storybook -- --output-dir storybook-static
 
