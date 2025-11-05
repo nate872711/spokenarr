@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# ✅ This enables tag pushes & release creation
+permissions:
+  contents: write
+
 env:
   DOCKERHUB_USER: nate8727
   DOCKERHUB_REPO_API: spokenarr-api
@@ -27,9 +31,6 @@ jobs:
 
       - name: 🏗️ Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: image=moby/buildkit:master
-          buildkitd-flags: --allow-insecure-entitlement network.host
 
       - name: 🏷️ Set version tag
         id: vars
@@ -70,9 +71,6 @@ jobs:
 
       - name: 🏗️ Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: image=moby/buildkit:master
-          buildkitd-flags: --allow-insecure-entitlement network.host
 
       - name: 🏷️ Use tag from backend
         run: echo "TAG=${{ needs.build-backend.outputs.tag || 'v' }}$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
@@ -133,7 +131,7 @@ jobs:
           name: "Spokenarr Release ${{ steps.tag.outputs.tag }}"
           body: |
             ✅ **Automated build completed successfully**
-            
+
             🧱 Backend: `${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPO_API }}:${{ steps.tag.outputs.tag }}`
             🌐 Frontend: `${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPO_WEB }}:${{ steps.tag.outputs.tag }}`
 
