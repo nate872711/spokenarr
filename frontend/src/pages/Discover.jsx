@@ -9,8 +9,8 @@ export default function Discover() {
     author: '',
     cover_url: '',
   });
+  const [uploading, setUploading] = useState(false);
 
-  // Fetch current audiobooks from backend
   const fetchAudiobooks = async () => {
     setLoading(true);
     try {
@@ -28,7 +28,30 @@ export default function Discover() {
     fetchAudiobooks();
   }, []);
 
-  // Create new audiobook
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      const res = await fetch('/api/upload-cover', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      const data = await res.json();
+      if (res.ok && data.cover_url) {
+        setFormData((prev) => ({ ...prev, cover_url: data.cover_url }));
+      } else {
+        alert('Upload failed');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -87,7 +110,6 @@ export default function Discover() {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="bg-gray-900 p-6 rounded-2xl shadow-lg w-96 border border-gray-700">
@@ -111,14 +133,21 @@ export default function Discover() {
                 className="w-full p-2 mb-3 rounded-md bg-gray-800 text-white"
               />
 
-              <label className="block text-sm mb-1">Cover URL (optional)</label>
+              <label className="block text-sm mb-1">Cover Image</label>
               <input
-                type="text"
-                value={formData.cover_url}
-                onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
-                placeholder="https://example.com/cover.jpg"
-                className="w-full p-2 mb-4 rounded-md bg-gray-800 text-white"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="w-full p-2 mb-4 text-gray-300"
               />
+              {uploading && <p className="text-xs text-gray-400 mb-2">Uploading...</p>}
+              {formData.cover_url && (
+                <img
+                  src={formData.cover_url}
+                  alt="Preview"
+                  className="w-full h-40 object-cover rounded-md mb-3 border border-gray-700"
+                />
+              )}
 
               <div className="flex justify-between">
                 <button
