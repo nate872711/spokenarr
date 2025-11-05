@@ -38,3 +38,10 @@ async def health():
 async def list_audiobooks(limit: int = 25):
     rows = await db.get_audiobooks(limit)
     return rows
+
+from .scanner import scan_audiobooks
+
+@app.get("/api/scan")
+async def scan_library():
+    results = scan_audiobooks()
+    return {"found": len(results), "audiobooks": results}
