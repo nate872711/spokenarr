@@ -49,6 +49,7 @@ jobs:
       - name: 🔢 Determine next version (start at v1.0.0)
         id: bump
         run: |
+          set +e
           LAST_VERSION="${{ steps.getver.outputs.last_tag }}"
           echo "Last version: $LAST_VERSION"
 
@@ -62,7 +63,7 @@ jobs:
           fi
 
           BUMP="patch"
-          MSG="$(git log -1 --pretty=%B)"
+          MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "initial commit")
           if echo "$MSG" | grep -qiE '^feat|feature'; then
             BUMP="minor"
           elif echo "$MSG" | grep -qi '^BREAKING'; then
@@ -86,11 +87,11 @@ jobs:
         run: |
           LAST="${{ steps.getver.outputs.last_tag }}"
           if [[ "$LAST" == "v0.0.0" ]]; then
-            RANGE=""
             LOG_RANGE="$(git rev-list --max-parents=0 HEAD | tail -n 1)..HEAD"
+            RANGE=""
           else
-            RANGE="since $LAST"
             LOG_RANGE="$LAST..HEAD"
+            RANGE="since $LAST"
           fi
 
           {
@@ -98,7 +99,7 @@ jobs:
             echo
             echo "**Changes ${RANGE}:**"
             echo
-            git log --no-merges --pretty="* %s (%h) — %an" $LOG_RANGE || echo "* Initial release"
+            git log --no-merges --pretty="* %s (%h) — %an" $LOG_RANGE 2>/dev/null || echo "* Initial release"
             echo
             echo "_Built from commit: \`${{ github.sha }}\` on branch \`${{ github.ref_name }}\`_"
           } > RELEASE_BODY.md
