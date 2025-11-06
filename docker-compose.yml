@@ -18,7 +18,7 @@ services:
       retries: 10
 
   api:
-    image: nate872711/spokenarr-api:latest
+    image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
     restart: always
     environment:
@@ -38,7 +38,7 @@ services:
       retries: 10
 
   web:
-    image: nate872711/spokenarr-web:latest
+    image: nate8727/spokenarr-web:latest
     container_name: spokenarr-web
     restart: always
     depends_on:
