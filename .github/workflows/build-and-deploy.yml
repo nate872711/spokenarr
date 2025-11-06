@@ -128,6 +128,10 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
+      - name: 🧱 Ensure build cache exists
+        run: |
+          docker manifest inspect ${{ env.CACHE_WEB }} >/dev/null 2>&1 || echo "no-cache" > skip_cache
+
       - name: 📦 Build & Push (web)
         uses: docker/build-push-action@v5
         with:
@@ -138,7 +142,23 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_WEB }},ignore-error=true
+          cache-from: ${{ env.CACHE_WEB }}
+          cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
+          build-args: |
+            VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
+        if: ${{ hashFiles('skip_cache') == '' }}
+
+      - name: 📦 Build & Push (web, no cache fallback)
+        if: ${{ hashFiles('skip_cache') != '' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
           cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
@@ -163,7 +183,12 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
+      - name: 🧱 Ensure API build cache exists
+        run: |
+          docker manifest inspect ${{ env.CACHE_API }} >/dev/null 2>&1 || echo "no-cache" > skip_cache_api
+
       - name: 📦 Build & Push (api)
+        if: ${{ hashFiles('skip_cache_api') == '' }}
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -173,7 +198,22 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_API }},ignore-error=true
+          cache-from: ${{ env.CACHE_API }}
+          cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
+          build-args: |
+            APP_VERSION=${{ needs.prepare.outputs.new_version }}
+
+      - name: 📦 Build & Push (api, no cache fallback)
+        if: ${{ hashFiles('skip_cache_api') != '' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:latest
+            ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
           cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.new_version }}
