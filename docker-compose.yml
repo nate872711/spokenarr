@@ -1,63 +1,62 @@
+version: "3.9"
+
 services:
-  spokenarr-db:
-    image: postgres:16-alpine
+  # -------------------------------
+  # Database Service
+  # -------------------------------
+  db:
+    image: postgres:16
     container_name: spokenarr-db
-    restart: unless-stopped
-    env_file: .env
+    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
       POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
     volumes:
-      - spokenarr_db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-spokenarr} -d ${POSTGRES_DB:-spokenarr}"]
       interval: 5s
       timeout: 3s
-      retries: 10
-    networks:
-      - spokenarr-net
+      retries: 5
 
-  spokenarr-api:
-    image: ${DOCKERHUB_USER}/${PROJECT_NAME}-api:latest
+  # -------------------------------
+  # FastAPI Backend Service
+  # -------------------------------
+  api:
+    image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
-    restart: unless-stopped
+    build:
+      context: ./backend
+    restart: always
     env_file: .env
     environment:
-      APP_ENV: ${APP_ENV:-production}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spokenarr:spokenarr_pass@spokenarr-db:5432/spokenarr}
-      AUDIO_PATH: ${AUDIO_PATH:-/app/audio}
-    # Most FastAPI images in this project listen on 8000 inside the container.
-    # Map host 5080 -> container 8000 to match your previous setup.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr}
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "${API_HOST_PORT:-5080}:8000"
-    volumes:
-      - ${DATA_PATH:-./data}/audio:${AUDIO_PATH:-/app/audio}
-    depends_on:
-      spokenarr-db:
-        condition: service_healthy
-    networks:
-      - spokenarr-net
 
-  spokenarr-web:
-    image: ${DOCKERHUB_USER}/${PROJECT_NAME}-web:latest
+  # -------------------------------
+  # React + Vite Frontend Service
+  # -------------------------------
+  web:
+    image: nate8727/spokenarr-web:latest
     container_name: spokenarr-web
-    restart: unless-stopped
-    env_file: .env
-    # Map host 6080 -> container 80 (nginx), like before
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      no_cache: true
+    depends_on:
+      - api
     ports:
       - "${WEB_HOST_PORT:-6080}:80"
-    depends_on:
-      - spokenarr-api
-    networks:
-      - spokenarr-net
-
-networks:
-  spokenarr-net:
-    driver: bridge
+    environment:
+      - NODE_ENV=production
+    restart: always
 
 volumes:
-  spokenarr_db_data:
+  postgres_data:
