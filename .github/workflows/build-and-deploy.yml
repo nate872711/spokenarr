@@ -2,21 +2,21 @@ name: Manual Build, Tag, and Push Images
 
 # ✅ Manual trigger only
 on:
-  workflow_dispatch:  # You’ll click “Run workflow” in GitHub Actions
+  workflow_dispatch:
 
 permissions:
-  contents: write   # needed for tagging + releases
+  contents: write
   packages: read
 
 env:
   REGISTRY: docker.io
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_USERNAME: nate8727
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  WEB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-web
-  API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-api
+  WEB_IMAGE: nate8727/spokenarr-web
+  API_IMAGE: nate8727/spokenarr-api
   PLATFORMS: linux/amd64,linux/arm64
-  CACHE_WEB: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-web:buildcache
-  CACHE_API: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-api:buildcache
+  CACHE_WEB: nate8727/spokenarr-web:buildcache
+  CACHE_API: nate8727/spokenarr-api:buildcache
 
 jobs:
   prepare:
@@ -26,7 +26,7 @@ jobs:
       new_version: ${{ steps.bump.outputs.new_version }}
       release_body: ${{ steps.changelog.outputs.release_body }}
     steps:
-      - name: ⬇️ Checkout
+      - name: ⬇️ Checkout (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -49,7 +49,7 @@ jobs:
           {
             echo "## 🚀 Spokenarr ${{ steps.bump.outputs.new_version }}"
             echo
-            git log -5 --pretty="* %s (%h) — %an"
+            git log -5 --pretty="* %s (%h) — %an" || echo "* Initial release"
             echo
             echo "_Built from commit: \`${{ github.sha }}\`_"
           } > RELEASE_BODY.md
@@ -69,8 +69,8 @@ jobs:
       - name: 🔐 DockerHub Login
         uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          username: nate8727
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: 🏗️ Build & Push Web
         uses: docker/build-push-action@v5
@@ -82,8 +82,12 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_WEB }}
-          cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
+          cache-from: |
+            type=registry,ref=${{ env.CACHE_WEB }}
+          cache-to: |
+            type=registry,ref=${{ env.CACHE_WEB }},mode=max
+          allow: |
+            type=registry,ref=${{ env.CACHE_WEB }}
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
@@ -99,8 +103,8 @@ jobs:
       - name: 🔐 DockerHub Login
         uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          username: nate8727
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: 🧩 Build & Push API
         uses: docker/build-push-action@v5
@@ -112,8 +116,12 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_API }}
-          cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
+          cache-from: |
+            type=registry,ref=${{ env.CACHE_API }}
+          cache-to: |
+            type=registry,ref=${{ env.CACHE_API }},mode=max
+          allow: |
+            type=registry,ref=${{ env.CACHE_API }}
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
