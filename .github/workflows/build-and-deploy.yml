@@ -47,27 +47,40 @@ jobs:
 
       - name: 🔢 Determine next version
         id: bump
+        shell: bash
         run: |
+          set -euo pipefail
           LAST_VERSION="${{ steps.getver.outputs.last_tag }}"
-          if [[ "$LAST_VERSION" == "v0.0.0" ]]; then
+          echo "Last version: $LAST_VERSION"
+
+          # Default to v1.0.0 if no tags yet
+          if [[ -z "$LAST_VERSION" || "$LAST_VERSION" == "v0.0.0" ]]; then
             MAJOR=1; MINOR=0; PATCH=0
           else
             IFS='.' read -r -a parts <<< "${LAST_VERSION#v}"
-            MAJOR=${parts[0]:-1}
-            MINOR=${parts[1]:-0}
-            PATCH=${parts[2]:-0}
+            MAJOR="${parts[0]:-1}"
+            MINOR="${parts[1]:-0}"
+            PATCH="${parts[2]:-0}"
           fi
-          MSG="$(git log -1 --pretty=%B)"
-          if echo "$MSG" | grep -qiE '^feat|feature'; then
-            ((MINOR++)); PATCH=0
-          elif echo "$MSG" | grep -qiE '^BREAKING'; then
-            ((MAJOR++)); MINOR=0; PATCH=0
+
+          MSG="$(git log -1 --pretty=%B || echo '')"
+          echo "Last commit message: $MSG"
+
+          if [[ "$MSG" =~ ^(feat|feature) ]]; then
+            ((MINOR+=1)); PATCH=0
+            BUMP_TYPE="minor"
+          elif [[ "$MSG" =~ ^BREAKING ]]; then
+            ((MAJOR+=1)); MINOR=0; PATCH=0
+            BUMP_TYPE="major"
           else
-            ((PATCH++))
+            ((PATCH+=1))
+            BUMP_TYPE="patch"
           fi
+
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "Next version: $NEW_VERSION"
+          echo "🔖 Determined bump type: $BUMP_TYPE"
+          echo "🆕 Next version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: 📝 Generate changelog
         id: changelog
