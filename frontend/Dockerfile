@@ -1,37 +1,34 @@
-# syntax=docker/dockerfile:1.6
-
-# ---------- Stage 1: dependencies ----------
+# Stage 1: Build frontend
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package definitions
+# Install necessary build dependencies for gifsicle and similar packages
+RUN apk add --no-cache python3 make g++ autoconf automake libtool bash git
+
+# Copy package files
 COPY package*.json ./
 
-# ✅ Always perform a clean dependency install (safe for CI/CD)
-RUN npm install --legacy-peer-deps
+# Install dependencies
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
-# ---------- Stage 2: build ----------
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy rest of frontend
 COPY . .
 
-# ✅ Build the main app and Storybook
+# Build the Vite app
 RUN npm run build
-RUN npm run build-storybook -- --output-dir storybook-static
 
-# ---------- Stage 3: serve ----------
+# Stage 2: Nginx to serve static files
 FROM nginx:stable-alpine
+WORKDIR /usr/share/nginx/html
+
+# Copy optimized Nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY --from=build /app/storybook-static /usr/share/nginx/html/storybook
 
-# ✅ Performance and caching optimizations
-RUN adduser -D -g 'www' www \
-  && chown -R www:www /usr/share/nginx/html \
-  && chmod -R 755 /usr/share/nginx/html
+# Copy build output
+COPY --from=deps /app/dist ./
 
+# Expose HTTP port
 EXPOSE 80
-USER www
 
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
