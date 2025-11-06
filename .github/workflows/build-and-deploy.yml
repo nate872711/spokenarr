@@ -1,23 +1,22 @@
-name: Build, Tag, Release, and Push Images (Multi-Arch Safe)
+name: Manual Build, Tag, and Push Images
 
+# ✅ Manual trigger only
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+  workflow_dispatch:  # You’ll click “Run workflow” in GitHub Actions
 
 permissions:
-  contents: write
+  contents: write   # needed for tagging + releases
   packages: read
 
 env:
   REGISTRY: docker.io
-  DOCKERHUB_USERNAME: nate8727
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  WEB_IMAGE: nate8727/spokenarr-web
-  API_IMAGE: nate8727/spokenarr-api
+  WEB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-web
+  API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-api
   PLATFORMS: linux/amd64,linux/arm64
-  CACHE_WEB: nate8727/spokenarr-web:buildcache
-  CACHE_API: nate8727/spokenarr-api:buildcache
+  CACHE_WEB: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-web:buildcache
+  CACHE_API: ${{ secrets.DOCKERHUB_USERNAME }}/spokenarr-api:buildcache
 
 jobs:
   prepare:
@@ -27,95 +26,119 @@ jobs:
       new_version: ${{ steps.bump.outputs.new_version }}
       release_body: ${{ steps.changelog.outputs.release_body }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - id: bump
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔢 Determine next version (auto increment)
+        id: bump
         run: |
-          LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST#v}"
-          MAJOR=${MAJOR:-1}; MINOR=${MINOR:-0}; PATCH=${PATCH:-0}
-          ((PATCH++))
-          echo "new_version=v${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-      - id: changelog
+          set -e
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Last version: $LAST_TAG"
+          IFS='.' read -r major minor patch <<< "${LAST_TAG#v}"
+          patch=$((patch+1))
+          NEW_VERSION="v${major}.${minor}.${patch}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
+
+      - name: 📝 Generate changelog
+        id: changelog
         run: |
-          echo "## 🚀 ${GITHUB_REPOSITORY#*/} ${{ steps.bump.outputs.new_version }}" > RELEASE_BODY.md
-          git log -1 --pretty="* %s (%h) — %an" >> RELEASE_BODY.md
+          {
+            echo "## 🚀 Spokenarr ${{ steps.bump.outputs.new_version }}"
+            echo
+            git log -5 --pretty="* %s (%h) — %an"
+            echo
+            echo "_Built from commit: \`${{ github.sha }}\`_"
+          } > RELEASE_BODY.md
           echo "release_body<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE_BODY.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
   build_web:
-    name: 🌐 Build & Push Web (Multi-Arch)
+    name: 🌐 Build & Push Web Image
     runs-on: ubuntu-latest
     needs: prepare
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+
+      - name: 🔐 DockerHub Login
+        uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+
+      - name: 🏗️ Build & Push Web
+        uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           platforms: ${{ env.PLATFORMS }}
           push: true
-          provenance: false
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=registry,ref=${{ env.CACHE_WEB }},mode=max
-            type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_WEB }}
+          cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
-            SKIP_IMAGEMIN=true
 
   build_api:
-    name: 🧱 Build & Push API (Multi-Arch)
+    name: 🧱 Build & Push API Image
     runs-on: ubuntu-latest
     needs: prepare
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+
+      - name: 🔐 DockerHub Login
+        uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+
+      - name: 🧩 Build & Push API
+        uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
           platforms: ${{ env.PLATFORMS }}
           push: true
-          provenance: false
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=registry,ref=${{ env.CACHE_API }},mode=max
-            type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_API }}
+          cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
+          build-args: |
+            APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
-  tag_and_release:
-    name: 🏷️ Tag & 📣 Release
+  release:
+    name: 🏷️ Tag & Create GitHub Release
     runs-on: ubuntu-latest
     needs: [prepare, build_web, build_api]
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - run: |
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ Create Git tag
+        run: |
+          TAG=${{ needs.prepare.outputs.new_version }}
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          NEW=${{ needs.prepare.outputs.new_version }}
-          git tag -a "$NEW" -m "Release $NEW" || echo "Tag exists"
-          git push origin "$NEW" || true
-      - uses: softprops/action-gh-release@v2
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: 📣 Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.new_version }}
           name: ${{ needs.prepare.outputs.new_version }}
           body: ${{ needs.prepare.outputs.release_body }}
+          draft: false
+          prerelease: false
