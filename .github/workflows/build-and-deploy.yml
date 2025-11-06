@@ -1,4 +1,4 @@
-name: Build, Tag, Release, and Push Images (Resilient Multi-Arch)
+name: Build, Tag, Release, and Push Images (Resilient)
 
 on:
   workflow_dispatch:
@@ -81,8 +81,8 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
+          # ✅ Local-first cache strategy
           cache-from: |
-            type=registry,ref=${{ env.CACHE_WEB }},ignore-error=true
             type=local,src=/tmp/.buildx-cache
           cache-to: |
             type=registry,ref=${{ env.CACHE_WEB }},mode=max
@@ -116,8 +116,8 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
+          # ✅ Local-first cache strategy
           cache-from: |
-            type=registry,ref=${{ env.CACHE_API }},ignore-error=true
             type=local,src=/tmp/.buildx-cache
           cache-to: |
             type=registry,ref=${{ env.CACHE_API }},mode=max
