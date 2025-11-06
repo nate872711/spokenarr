@@ -1,16 +1,24 @@
 # syntax=docker/dockerfile:1.6
 
-# ---------- Stage 1: dependencies ----------
-FROM node:20-alpine AS deps
+# ---------- Stage 1: Dependencies ----------
+FROM node:20-bullseye AS deps
 WORKDIR /app
 
-# Install required system build tools for image optimization libs (like gifsicle)
-RUN apk add --no-cache python3 make g++ autoconf automake libtool bash git
+# Install OS dependencies for native modules like gifsicle/imagemin
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package definition files
+# Copy package files
 COPY package*.json ./
 
-# Clean npm cache and fix permissions for CI environments
+# Clean npm cache and fix permissions for CI
 RUN npm cache clean --force && mkdir -p /root/.npm && chmod -R 777 /root/.npm
 
 # Install dependencies safely
@@ -22,24 +30,24 @@ RUN if [ -f package-lock.json ]; then \
       npm install --legacy-peer-deps; \
     fi
 
-# ---------- Stage 2: build ----------
-FROM node:20-alpine AS build
+# ---------- Stage 2: Build ----------
+FROM node:20-bullseye AS build
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Run the build with clear logs
-RUN echo "🧱 Building Vite app..." && npm run build
+# Build Vite frontend
+RUN echo "🚧 Building Vite app..." && npm run build
 
-# ---------- Stage 3: serve ----------
+# ---------- Stage 3: Serve ----------
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 
-# Copy nginx config
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy build output
+# Copy production build files
 COPY --from=build /app/dist ./
 
 # Expose port
