@@ -1,6 +1,5 @@
 name: Manual Build, Tag, and Push Images
 
-# ✅ Manual trigger only
 on:
   workflow_dispatch:
 
@@ -26,29 +25,26 @@ jobs:
       new_version: ${{ steps.bump.outputs.new_version }}
       release_body: ${{ steps.changelog.outputs.release_body }}
     steps:
-      - name: ⬇️ Checkout (full history)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 🔢 Determine next version (auto increment)
-        id: bump
+      - id: bump
+        name: 🔢 Determine next version
         run: |
           set -e
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Last version: $LAST_TAG"
           IFS='.' read -r major minor patch <<< "${LAST_TAG#v}"
           patch=$((patch+1))
           NEW_VERSION="v${major}.${minor}.${patch}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Next version: $NEW_VERSION"
 
-      - name: 📝 Generate changelog
-        id: changelog
+      - id: changelog
+        name: 📝 Generate changelog
         run: |
           {
             echo "## 🚀 Spokenarr ${{ steps.bump.outputs.new_version }}"
-            echo
             git log -5 --pretty="* %s (%h) — %an" || echo "* Initial release"
             echo
             echo "_Built from commit: \`${{ github.sha }}\`_"
@@ -86,10 +82,9 @@ jobs:
             type=registry,ref=${{ env.CACHE_WEB }}
           cache-to: |
             type=registry,ref=${{ env.CACHE_WEB }},mode=max
-          allow: |
-            type=registry,ref=${{ env.CACHE_WEB }}
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
+            BUILDKIT_INLINE_CACHE=1
 
   build_api:
     name: 🧱 Build & Push API Image
@@ -120,10 +115,9 @@ jobs:
             type=registry,ref=${{ env.CACHE_API }}
           cache-to: |
             type=registry,ref=${{ env.CACHE_API }},mode=max
-          allow: |
-            type=registry,ref=${{ env.CACHE_API }}
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.new_version }}
+            BUILDKIT_INLINE_CACHE=1
 
   release:
     name: 🏷️ Tag & Create GitHub Release
@@ -148,5 +142,3 @@ jobs:
           tag_name: ${{ needs.prepare.outputs.new_version }}
           name: ${{ needs.prepare.outputs.new_version }}
           body: ${{ needs.prepare.outputs.release_body }}
-          draft: false
-          prerelease: false
