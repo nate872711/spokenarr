@@ -1,53 +1,54 @@
-# ----------------------------------------------------
-# FRONTEND DOCKERFILE — Stable Multi-Arch Build
-# ----------------------------------------------------
+# syntax=docker/dockerfile:1.6
+
+# ============================
+# Stage 1: Dependencies
+# ============================
 FROM node:20-slim AS deps
-
-# Install required tools for image optimization fallback
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential python3 git curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-# Copy only package manifests first (for better caching)
+# Copy dependency manifests
 COPY package*.json ./
 
-# ✅ Fix: prevent optipng-bin from trying to build from source
-# by skipping optional dependencies on unsupported archs
-ENV npm_config_optional=true
-ENV npm_config_arch=x64
-
-# Install dependencies (using ci if lockfile exists)
+# Install dependencies efficiently
 RUN if [ -f package-lock.json ]; then \
-      echo "✅ Found package-lock.json, running npm ci..."; \
+      echo "✅ Found package-lock.json, installing exact deps..."; \
       npm ci --legacy-peer-deps; \
     else \
-      echo "⚠️ No package-lock.json found, running npm install..."; \
+      echo "⚠️ No lockfile found, installing normally..."; \
       npm install --legacy-peer-deps; \
     fi
 
-# ----------------------------------------------------
-# Build stage
-# ----------------------------------------------------
+# ============================
+# Stage 2: Build
+# ============================
 FROM node:20-slim AS build
 WORKDIR /app
+
+# Build arguments (from workflow)
+ARG SKIP_IMAGEMIN=false
+ENV SKIP_IMAGEMIN=${SKIP_IMAGEMIN}
+
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Build frontend & storybook
+RUN echo "🧱 Building Vite app (SKIP_IMAGEMIN=$SKIP_IMAGEMIN)..."
 RUN npm run build
+RUN npm run build-storybook -- --output-dir storybook-static
 
-# ----------------------------------------------------
-# Runtime stage
-# ----------------------------------------------------
-FROM nginx:stable-alpine AS runtime
+# ============================
+# Stage 3: Serve with NGINX
+# ============================
+FROM nginx:stable-alpine
+WORKDIR /usr/share/nginx/html
 
-# Copy Nginx config
+# Copy built frontend and storybook
+COPY --from=build /app/dist ./
+COPY --from=build /app/storybook-static ./storybook
+
+# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built app
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Expose port 80
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
