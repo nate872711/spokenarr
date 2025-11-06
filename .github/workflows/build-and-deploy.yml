@@ -1,4 +1,4 @@
-name: Build, Tag, Release, and Push Images (Multi-Arch)
+name: Build, Tag, Release, and Push Images (Multi-Arch + Safe Cache)
 
 on:
   workflow_dispatch:
@@ -141,8 +141,10 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_WEB }}
-          cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
+          cache-from: |
+            type=registry,ref=${{ env.CACHE_WEB }},ignore-error=true
+          cache-to: |
+            type=registry,ref=${{ env.CACHE_WEB }},mode=max
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
@@ -182,8 +184,10 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: type=registry,ref=${{ env.CACHE_API }}
-          cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
+          cache-from: |
+            type=registry,ref=${{ env.CACHE_API }},ignore-error=true
+          cache-to: |
+            type=registry,ref=${{ env.CACHE_API }},mode=max
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
