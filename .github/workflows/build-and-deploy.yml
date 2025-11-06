@@ -79,7 +79,7 @@ jobs:
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
           cache-from: |
-            type=registry,ref=${{ env.CACHE_WEB }}
+            type=registry,ref=${{ env.CACHE_WEB }},ignore-error=true
           cache-to: |
             type=registry,ref=${{ env.CACHE_WEB }},mode=max
           build-args: |
@@ -112,7 +112,7 @@ jobs:
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
           cache-from: |
-            type=registry,ref=${{ env.CACHE_API }}
+            type=registry,ref=${{ env.CACHE_API }},ignore-error=true
           cache-to: |
             type=registry,ref=${{ env.CACHE_API }},mode=max
           build-args: |
