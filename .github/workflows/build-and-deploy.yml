@@ -14,8 +14,8 @@ env:
   WEB_IMAGE: nate8727/spokenarr-web
   API_IMAGE: nate8727/spokenarr-api
   PLATFORMS: linux/amd64,linux/arm64
-  CACHE_WEB: nate8727/spokenarr-web:buildcache
-  CACHE_API: nate8727/spokenarr-api:buildcache
+  CACHE_WEB: /tmp/.buildx-cache-web
+  CACHE_API: /tmp/.buildx-cache-api
 
 jobs:
   prepare:
@@ -78,10 +78,8 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: |
-            type=registry,ref=${{ env.CACHE_WEB }},ignore-error=true
-          cache-to: |
-            type=registry,ref=${{ env.CACHE_WEB }},mode=max
+          cache-from: type=local,src=${{ env.CACHE_WEB }}
+          cache-to: type=local,dest=${{ env.CACHE_WEB }},mode=max
           build-args: |
             VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
             BUILDKIT_INLINE_CACHE=1
@@ -111,10 +109,8 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: |
-            type=registry,ref=${{ env.CACHE_API }},ignore-error=true
-          cache-to: |
-            type=registry,ref=${{ env.CACHE_API }},mode=max
+          cache-from: type=local,src=${{ env.CACHE_API }}
+          cache-to: type=local,dest=${{ env.CACHE_API }},mode=max
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.new_version }}
             BUILDKIT_INLINE_CACHE=1
