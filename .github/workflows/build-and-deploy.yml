@@ -38,22 +38,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔎 Get last tag (if any)
+      - name: 🔎 Get last tag
         id: getver
         run: |
-          set +e
           LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "last_tag=$LAST" >> $GITHUB_OUTPUT
-          echo "Last tag: $LAST"
+          echo "Found last tag: $LAST"
 
-      - name: 🔢 Determine next version (start at v1.0.0)
+      - name: 🔢 Determine next version
         id: bump
         run: |
-          set +e
           LAST_VERSION="${{ steps.getver.outputs.last_tag }}"
-          echo "Last version: $LAST_VERSION"
-
-          if [[ -z "$LAST_VERSION" || "$LAST_VERSION" == "v0.0.0" ]]; then
+          if [[ "$LAST_VERSION" == "v0.0.0" ]]; then
             MAJOR=1; MINOR=0; PATCH=0
           else
             IFS='.' read -r -a parts <<< "${LAST_VERSION#v}"
@@ -61,23 +57,14 @@ jobs:
             MINOR=${parts[1]:-0}
             PATCH=${parts[2]:-0}
           fi
-
-          BUMP="patch"
-          MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "initial commit")
+          MSG="$(git log -1 --pretty=%B)"
           if echo "$MSG" | grep -qiE '^feat|feature'; then
-            BUMP="minor"
-          elif echo "$MSG" | grep -qi '^BREAKING'; then
-            BUMP="major"
-          fi
-
-          if [ "$BUMP" = "major" ]; then
-            ((MAJOR++)); MINOR=0; PATCH=0
-          elif [ "$BUMP" = "minor" ]; then
             ((MINOR++)); PATCH=0
+          elif echo "$MSG" | grep -qiE '^BREAKING'; then
+            ((MAJOR++)); MINOR=0; PATCH=0
           else
             ((PATCH++))
           fi
-
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Next version: $NEW_VERSION"
@@ -86,24 +73,14 @@ jobs:
         id: changelog
         run: |
           LAST="${{ steps.getver.outputs.last_tag }}"
-          if [[ "$LAST" == "v0.0.0" ]]; then
-            LOG_RANGE="$(git rev-list --max-parents=0 HEAD | tail -n 1)..HEAD"
-            RANGE=""
-          else
-            LOG_RANGE="$LAST..HEAD"
-            RANGE="since $LAST"
-          fi
-
+          LOG_RANGE="${LAST}..HEAD"
           {
-            echo "## 🚀 ${GITHUB_REPOSITORY#*/} ${{ steps.bump.outputs.new_version }}"
+            echo "## 🚀 Release Notes for ${{ steps.bump.outputs.new_version }}"
             echo
-            echo "**Changes ${RANGE}:**"
+            git log --no-merges --pretty="* %s (%h) — %an" $LOG_RANGE || echo "* Initial release"
             echo
-            git log --no-merges --pretty="* %s (%h) — %an" $LOG_RANGE 2>/dev/null || echo "* Initial release"
-            echo
-            echo "_Built from commit: \`${{ github.sha }}\` on branch \`${{ github.ref_name }}\`_"
+            echo "_Commit: \`${{ github.sha }}\` on branch \`${{ github.ref_name }}\`_"
           } > RELEASE_BODY.md
-
           echo "release_body<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE_BODY.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -116,52 +93,44 @@ jobs:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
 
-      - name: 🔧 Set up QEMU
+      - name: 🔧 QEMU + Buildx
         uses: docker/setup-qemu-action@v3
 
-      - name: 🛠️ Set up Docker Buildx
+      - name: 🛠️ Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🔐 DockerHub Login
+      - name: 🔐 Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
-      - name: 🧱 Ensure build cache exists
-        run: |
-          docker manifest inspect ${{ env.CACHE_WEB }} >/dev/null 2>&1 || echo "no-cache" > skip_cache
-
-      - name: 📦 Build & Push (web)
+      - name: 🧱 Build & Push (multi-arch)
+        id: build-web
+        continue-on-error: true
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          platforms: ${{ env.PLATFORMS }}
           push: true
+          platforms: ${{ env.PLATFORMS }}
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: ${{ env.CACHE_WEB }}
+          cache-from: type=registry,ref=${{ env.CACHE_WEB }}
           cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
-          build-args: |
-            VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
-        if: ${{ hashFiles('skip_cache') == '' }}
 
-      - name: 📦 Build & Push (web, no cache fallback)
-        if: ${{ hashFiles('skip_cache') != '' }}
+      - name: 🧱 Retry (amd64 only if ARM fails)
+        if: steps.build-web.outcome == 'failure'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          platforms: ${{ env.PLATFORMS }}
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-to: type=registry,ref=${{ env.CACHE_WEB }},mode=max
-          build-args: |
-            VITE_APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
   build_api:
     name: 🧱 Build & Push API Image
@@ -170,77 +139,46 @@ jobs:
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
-
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: 🛠️ Set up Docker Buildx
+      - name: 🔧 Setup Docker
         uses: docker/setup-buildx-action@v3
-
-      - name: 🔐 DockerHub Login
+      - name: 🔐 Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-
-      - name: 🧱 Ensure API build cache exists
-        run: |
-          docker manifest inspect ${{ env.CACHE_API }} >/dev/null 2>&1 || echo "no-cache" > skip_cache_api
-
-      - name: 📦 Build & Push (api)
-        if: ${{ hashFiles('skip_cache_api') == '' }}
+      - name: 📦 Build & Push
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          platforms: ${{ env.PLATFORMS }}
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.API_IMAGE }}:latest
             ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-from: ${{ env.CACHE_API }}
+          cache-from: type=registry,ref=${{ env.CACHE_API }}
           cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
-          build-args: |
-            APP_VERSION=${{ needs.prepare.outputs.new_version }}
-
-      - name: 📦 Build & Push (api, no cache fallback)
-        if: ${{ hashFiles('skip_cache_api') != '' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          tags: |
-            ${{ env.API_IMAGE }}:latest
-            ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.new_version }}
-          cache-to: type=registry,ref=${{ env.CACHE_API }},mode=max
-          build-args: |
-            APP_VERSION=${{ needs.prepare.outputs.new_version }}
 
   tag_and_release:
-    name: 🏷️ Create tag & 📣 GitHub Release
+    name: 🏷️ Tag & Release
     runs-on: ubuntu-latest
     needs: [prepare, build_web, build_api]
     steps:
-      - name: ⬇️ Checkout (full history)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: 🏷️ Create Git tag (if not exists)
+      - name: 🏷️ Create Tag
         run: |
           NEW="${{ needs.prepare.outputs.new_version }}"
           if git rev-parse "$NEW" >/dev/null 2>&1; then
-            echo "Tag $NEW already exists — skipping."
+            echo "Tag $NEW already exists"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$NEW" -m "Release $NEW"
             git push origin "$NEW"
           fi
-
-      - name: 📣 Create GitHub Release
+      - name: 📣 Publish Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.new_version }}
