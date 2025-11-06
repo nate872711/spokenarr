@@ -1,62 +1,57 @@
-version: "3.9"
-
 services:
-  # -------------------------------
-  # Database Service
-  # -------------------------------
   db:
     image: postgres:16
     container_name: spokenarr-db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-spokenarr}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spokenarr_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-spokenarr}
+      POSTGRES_USER: spokenarr
+      POSTGRES_PASSWORD: spokenarr_pass
+      POSTGRES_DB: spokenarr
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - spokenarr_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-spokenarr} -d ${POSTGRES_DB:-spokenarr}"]
+      test: ["CMD-SHELL", "pg_isready -U spokenarr -d spokenarr"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
 
-  # -------------------------------
-  # FastAPI Backend Service
-  # -------------------------------
   api:
-    image: nate8727/spokenarr-api:latest
+    image: nate872711/spokenarr-api:latest
     container_name: spokenarr-api
-    build:
-      context: ./backend
     restart: always
-    env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr}
+      DATABASE_URL: postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr
+      APP_ENV: production
+      APP_DEBUG: "false"
+      PORT: "8000"
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "${API_HOST_PORT:-5080}:8000"
+      - "5080:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  # -------------------------------
-  # React + Vite Frontend Service
-  # -------------------------------
   web:
-    image: nate8727/spokenarr-web:latest
+    image: nate872711/spokenarr-web:latest
     container_name: spokenarr-web
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      no_cache: true
-    depends_on:
-      - api
-    ports:
-      - "${WEB_HOST_PORT:-6080}:80"
-    environment:
-      - NODE_ENV=production
     restart: always
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "6080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
 volumes:
-  postgres_data:
+  spokenarr_data:
+    driver: local
