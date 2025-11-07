@@ -5,7 +5,7 @@ FROM node:20-slim AS deps
 
 WORKDIR /app
 
-# Install build dependencies required by imagemin plugins (gifsicle, mozjpeg, optipng)
+# Install build dependencies for imagemin plugins (mozjpeg, gifsicle, optipng)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       autoconf \
@@ -17,9 +17,16 @@ RUN apt-get update && \
       nasm \
       libpng-dev \
       zlib1g-dev \
+      libjpeg-dev \
+      libgif-dev \
       ca-certificates \
       python3 && \
     rm -rf /var/lib/apt/lists/*
+
+# Set build flags to disable NEON optimizations (fixes ARM64 optipng build failure)
+ENV CFLAGS="-O2 -fPIC" \
+    CPPFLAGS="-O2 -fPIC" \
+    LDFLAGS="-lm"
 
 # Copy package manifests
 COPY package*.json ./
@@ -50,13 +57,9 @@ RUN echo "🚀 Building Vite app..." && \
 # ------------------------------
 FROM nginx:alpine AS runtime
 
-# Copy Nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy built files
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Security: run as non-root
 RUN adduser -D -H -u 1001 spokenarr && \
     chown -R spokenarr:spokenarr /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html
