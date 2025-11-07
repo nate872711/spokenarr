@@ -1,26 +1,10 @@
 services:
-  db:
-    image: postgres:16
-    container_name: spokenarr-db
-    restart: always
-    environment:
-      POSTGRES_USER: spokenarr
-      POSTGRES_PASSWORD: spokenarr_pass
-      POSTGRES_DB: spokenarr
-    volumes:
-      - spokenarr_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spokenarr -d spokenarr"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   api:
     image: nate8727/spokenarr-api:latest
     container_name: spokenarr-api
     restart: always
+    networks:
+      - spokenarr-net
     environment:
       DATABASE_URL: postgresql+asyncpg://spokenarr:spokenarr_pass@db:5432/spokenarr
       APP_ENV: production
@@ -44,6 +28,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - spokenarr-net
     ports:
       - "6080:80"
     healthcheck:
@@ -52,6 +38,30 @@ services:
       timeout: 5s
       retries: 10
 
+  db:
+    image: postgres:16
+    container_name: spokenarr-db
+    restart: always
+    networks:
+      - spokenarr-net
+    environment:
+      POSTGRES_USER: spokenarr
+      POSTGRES_PASSWORD: spokenarr_pass
+      POSTGRES_DB: spokenarr
+    volumes:
+      - spokenarr_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spokenarr -d spokenarr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   spokenarr_data:
     driver: local
+
+networks:
+  spokenarr-net:
+    driver: bridge
