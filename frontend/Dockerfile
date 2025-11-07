@@ -1,13 +1,12 @@
-# syntax=docker/dockerfile:1.6
+# ------------------------------
+# Stage 1: Dependencies
+# ------------------------------
+FROM node:20-slim AS deps
 
-# ---------- Stage 1: Dependencies ----------
-FROM node:20-bullseye AS deps
 WORKDIR /app
 
-# Copy package manifests
+# Install dependencies
 COPY package*.json ./
-
-# Use cached clean install
 RUN echo "📦 Installing dependencies..." && \
     if [ -f package-lock.json ]; then \
       npm ci --legacy-peer-deps; \
@@ -16,32 +15,40 @@ RUN echo "📦 Installing dependencies..." && \
       npm install --legacy-peer-deps; \
     fi
 
-# ---------- Stage 2: Build ----------
-FROM node:20-bullseye AS build
+# ------------------------------
+# Stage 2: Build
+# ------------------------------
+FROM node:20-slim AS build
+
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG VITE_APP_VERSION="dev"
-ARG SKIP_IMAGEMIN="false"
+# Build the frontend using Vite
+RUN echo "🚀 Building production frontend..." && \
+    npm run build || (echo "❌ Build failed" && exit 1)
 
-RUN echo "🏗️ Building Spokenarr (version $VITE_APP_VERSION, SKIP_IMAGEMIN=$SKIP_IMAGEMIN)" && \
-    npm run build --if-present || echo "⚠️ Skipping Vite build (no build script found)" && \
-    npm run build-storybook --if-present -- --output-dir storybook-static || echo "⚠️ Skipping Storybook build"
-
-# ---------- Stage 3: Serve with Nginx ----------
-FROM nginx:stable
-WORKDIR /usr/share/nginx/html
-
-# Copy built assets
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/storybook-static ./storybook 2>/dev/null || true
+# ------------------------------
+# Stage 3: Production Image
+# ------------------------------
+FROM nginx:alpine AS runtime
 
 # Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose HTTP port
-EXPOSE 80
+# Copy built assets from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Entrypoint
+# (Removed Storybook copy line that caused checksum error)
+# COPY --from=build /app/storybook-static ./storybook
+
+# Optimize Nginx permissions and startup
+RUN adduser -D -H -u 1001 spokenarr && \
+    chown -R spokenarr:spokenarr /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html
+
+USER spokenarr
+
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
