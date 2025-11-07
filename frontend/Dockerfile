@@ -5,7 +5,7 @@ FROM node:20-slim AS deps
 
 WORKDIR /app
 
-# Install build dependencies required for gifsicle/optipng/jpegtran binaries
+# Install build dependencies required by imagemin plugins (gifsicle, mozjpeg, optipng)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       autoconf \
@@ -13,6 +13,10 @@ RUN apt-get update && \
       libtool \
       make \
       g++ \
+      pkg-config \
+      nasm \
+      libpng-dev \
+      zlib1g-dev \
       ca-certificates \
       python3 && \
     rm -rf /var/lib/apt/lists/*
@@ -20,7 +24,7 @@ RUN apt-get update && \
 # Copy package manifests
 COPY package*.json ./
 
-# Install npm dependencies
+# Install dependencies
 RUN echo "📦 Installing dependencies..." && \
     if [ -f package-lock.json ]; then \
       npm ci --legacy-peer-deps; \
@@ -38,8 +42,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the Vite app
-RUN echo "🚀 Building production frontend..." && \
+RUN echo "🚀 Building Vite app..." && \
     npm run build || (echo "❌ Build failed" && exit 1)
 
 # ------------------------------
@@ -47,13 +50,13 @@ RUN echo "🚀 Building production frontend..." && \
 # ------------------------------
 FROM nginx:alpine AS runtime
 
-# Copy Nginx configuration
+# Copy Nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built app from build stage
+# Copy built files
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Set up non-root user and permissions
+# Security: run as non-root
 RUN adduser -D -H -u 1001 spokenarr && \
     chown -R spokenarr:spokenarr /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html
