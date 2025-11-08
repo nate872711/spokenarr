@@ -52,7 +52,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
   build_web:
-    name: 🌐 Build & Push Web Image (true multi-arch)
+    name: 🌐 Build & Push Web Image (true multi-arch, fixed)
     runs-on: ubuntu-latest
     needs: prepare
     steps:
@@ -66,19 +66,24 @@ jobs:
           username: nate8727
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: 🏗️ Build & Push Web (each arch)
+      - name: 🏗️ Build & Push Web (each arch cleanly)
         run: |
+          # Build each platform separately without attestations
           docker buildx build \
             --platform linux/amd64 \
+            --provenance=false \
             -t ${{ env.WEB_IMAGE }}:amd64 \
             -f ./frontend/Dockerfile ./frontend \
             --push
+
           docker buildx build \
             --platform linux/arm64 \
+            --provenance=false \
             -t ${{ env.WEB_IMAGE }}:arm64 \
             -f ./frontend/Dockerfile ./frontend \
             --push
 
+          # Combine manifests
           docker manifest create ${{ env.WEB_IMAGE }}:latest \
             --amend ${{ env.WEB_IMAGE }}:amd64 \
             --amend ${{ env.WEB_IMAGE }}:arm64
@@ -90,7 +95,7 @@ jobs:
           docker manifest push ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.new_version }}
 
   build_api:
-    name: 🧱 Build & Push API Image (true multi-arch)
+    name: 🧱 Build & Push API Image (true multi-arch, fixed)
     runs-on: ubuntu-latest
     needs: prepare
     steps:
@@ -104,15 +109,18 @@ jobs:
           username: nate8727
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: 🧩 Build & Push API (each arch)
+      - name: 🧩 Build & Push API (each arch cleanly)
         run: |
           docker buildx build \
             --platform linux/amd64 \
+            --provenance=false \
             -t ${{ env.API_IMAGE }}:amd64 \
             -f ./backend/Dockerfile ./backend \
             --push
+
           docker buildx build \
             --platform linux/arm64 \
+            --provenance=false \
             -t ${{ env.API_IMAGE }}:arm64 \
             -f ./backend/Dockerfile ./backend \
             --push
