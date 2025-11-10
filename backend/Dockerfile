@@ -1,47 +1,45 @@
 # syntax=docker/dockerfile:1.6
 
-###############################################
-# Base image (arch-safe)
-###############################################
+# ----------------------------------------
+# Base image
+# ----------------------------------------
 FROM python:3.11-slim AS base
 WORKDIR /app
 
-# Install minimal runtime libs (NOT build tools)
+# System packages for psycopg/asyncpg and friends
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential libpq-dev curl gcc \
+ && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-###############################################
-# Dependency install (pure Python / binary wheels only)
-###############################################
+# ----------------------------------------
+# Dependencies (build per-arch, no cross-copy!)
+# ----------------------------------------
 FROM base AS deps
 
 COPY requirements.txt .
-
-# Install dependencies — no build-essential, no libpq-dev, no GCC
 RUN pip install --upgrade pip setuptools wheel && \
+    pip config set global.timeout 100 && \
+    pip config set global.retries 5 && \
     pip install --no-cache-dir -r requirements.txt
 
-###############################################
-# Final runtime image
-###############################################
+# ----------------------------------------
+# Runtime
+# ----------------------------------------
 FROM python:3.11-slim AS runtime
 WORKDIR /app
 
-# Runtime libs only
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev curl \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies
-COPY --from=deps /usr/local/lib/python3.11/site-packages \
-                 /usr/local/lib/python3.11/site-packages
+# Copy installed site-packages and binaries
+COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=deps /usr/local/bin /usr/local/bin
 
-# App source
+# App code
 COPY . .
 
 EXPOSE 8000
