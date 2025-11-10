@@ -1,21 +1,15 @@
-# --- Core Framework ---
 fastapi==0.115.5
 uvicorn[standard]==0.32.0
 
-# --- Database Stack ---
+# DB stack — pure Python wheels only
 SQLAlchemy==2.0.36
 databases[postgresql]==0.9.0
 asyncpg==0.30.0
-# Use psycopg3 binary wheels (no compile needed)
 psycopg[binary]==3.2.3
 
-# --- Form & Upload Handling ---
+# uploads / forms
 python-multipart==0.0.9
 
-# --- HTTP Client ---
+# HTTP client
 aiohttp==3.10.10
-
-# --- Optional: Useful utilities for prod environments ---
-python-dotenv==1.0.1        # for .env loading if not handled by FastAPI settings
-loguru==0.7.2               # structured logging
-alembic==1.14.0             # for DB migrations
+httpx==0.27.2
