@@ -1,72 +1,31 @@
-# ===============================
-# 🧱 Stage 1: Dependencies
-# ===============================
-FROM node:20-slim AS deps
+# syntax=docker/dockerfile:1.6
 
+################################################
+# Stage 1 — Build Vite frontend
+################################################
+FROM node:18-alpine AS build
 WORKDIR /app
-
-# Install required build tools for imagemin and patch-package
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      autoconf \
-      automake \
-      build-essential \
-      libtool \
-      make \
-      g++ \
-      pkg-config \
-      nasm \
-      libpng-dev \
-      zlib1g-dev \
-      libjpeg-dev \
-      libgif-dev \
-      ca-certificates \
-      python3 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Fix ARM64 issues with optipng (disable NEON optimizations)
-ENV CFLAGS="-O2 -fPIC -DPNG_ARM_NEON_OPT=0 -DPNG_ARM_NEON=0" \
-    CPPFLAGS="-O2 -fPIC -DPNG_ARM_NEON_OPT=0 -DPNG_ARM_NEON=0" \
-    LDFLAGS="-lm"
 
 COPY package*.json ./
+RUN npm ci --legacy-peer-deps
 
-# Ensure patch-package works (install globally or ensure it’s available before npm ci)
-RUN npm install -g patch-package && \
-    echo "📦 Installing dependencies..." && \
-    if [ -f package-lock.json ]; then \
-      npm ci --legacy-peer-deps; \
-    else \
-      npm install --package-lock-only --legacy-peer-deps && \
-      npm install --legacy-peer-deps; \
-    fi && \
-    echo "✅ Applying local patches..." && \
-    npx patch-package || echo "ℹ️ No patches to apply"
-
-# ===============================
-# ⚙️ Stage 2: Build
-# ===============================
-FROM node:20-slim AS build
-
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build
 
-RUN echo "🚀 Building app..." && \
-    npm run build || (echo "❌ Build failed" && exit 1)
-
-# ===============================
-# 🌐 Stage 3: Runtime
-# ===============================
+################################################
+# Stage 2 — Nginx runtime
+################################################
 FROM nginx:alpine AS runtime
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Clean default config
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built Vite app
 COPY --from=build /app/dist /usr/share/nginx/html
 
-RUN adduser -D -H -u 1001 spokenarr && \
-    chown -R spokenarr:spokenarr /usr/share/nginx/html && \
-    chmod -R 755 /usr/share/nginx/html
+# Copy your custom nginx.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-USER spokenarr
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]
