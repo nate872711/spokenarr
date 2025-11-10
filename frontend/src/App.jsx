@@ -1,26 +1,23 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Discover from "./pages/Discover";
-import Library from "./pages/Library";
-import Downloads from "./pages/Downloads";
-import Settings from "./pages/Settings";
-import PWAUpdater from "./pwa-updater";
+import React from 'react'
 
 export default function App() {
-  return (
-    <Router>
-      <>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/library" element={<Library />} />
-          <Route path="/downloads" element={<Downloads />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+  const [health, setHealth] = React.useState(null)
 
-        {/* ✅ Progressive Web App update toast */}
-        <PWAUpdater />
-      </>
-    </Router>
-  );
+  async function ping() {
+    const res = await fetch('/api/health')
+    setHealth(await res.json())
+  }
+
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 24 }}>
+      <h1>Spokenarr</h1>
+      <p>Frontend is up. Try hitting the API health endpoint:</p>
+      <button onClick={ping}>Ping /api/health</button>
+      {health && (
+        <pre style={{ background: '#f6f6f6', padding: 12, marginTop: 12 }}>
+{JSON.stringify(health, null, 2)}
+        </pre>
+      )}
+    </div>
+  )
 }
