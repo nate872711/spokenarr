@@ -1,9 +1,14 @@
-.env
-.env.*
-node_modules
+# node
 frontend/node_modules
-backend/__pycache__
+frontend/dist
+frontend/.vite
+frontend/package-lock.json
+
+# python
+__pycache__/
 *.pyc
-.storybook-static
-storybook-static
-dist
+.venv/
+
+# misc
+.env
+.DS_Store
