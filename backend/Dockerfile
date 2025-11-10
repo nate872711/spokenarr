@@ -1,55 +1,58 @@
 # syntax=docker/dockerfile:1.6
 
-# ---------- Stage 1: base ----------
-FROM --platform=$BUILDPLATFORM python:3.11-slim AS base
+# ----------------------------------------
+# Base image
+# ----------------------------------------
+FROM python:3.11-slim AS base
 WORKDIR /app
 
-# Install minimal system deps for psycopg2, Pillow, etc.
+# Install system packages needed for dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev curl gcc \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential \
+    libpq-dev \
+    curl \
+    gcc \
+ && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PYTHONDONTWRITEBYTECODE=1
 
-# ---------- Stage 2: deps ----------
+# ----------------------------------------
+# Dependencies layer (NO copying between arch!)
+# ----------------------------------------
 FROM base AS deps
-WORKDIR /app
+
 COPY requirements.txt .
 
-# Install dependencies with retry and mirror fallback
+# Safe pip setup with retries
 RUN pip install --upgrade pip setuptools wheel && \
     pip config set global.timeout 100 && \
     pip config set global.retries 5 && \
-    pip config set install.trusted-host pypi.org && \
-    pip config set install.trusted-host pypi.python.org && \
-    pip config set install.trusted-host files.pythonhosted.org && \
-    pip install -r requirements.txt || \
-    (echo "⚠️ PyPI install failed — retrying with mirror..." && \
-     pip install -r requirements.txt --index-url https://pypi.org/simple --extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple)
+    pip install --no-cache-dir -r requirements.txt
 
-# ---------- Stage 3: runtime ----------
-FROM --platform=$TARGETPLATFORM python:3.11-slim AS runtime
+# ----------------------------------------
+# Runtime image (ARM64/AMD64-safe)
+# ----------------------------------------
+FROM python:3.11-slim AS runtime
 WORKDIR /app
 
-# Copy deps from build stage
-COPY --from=deps /usr/local/lib/python3.11 /usr/local/lib/python3.11
+# Install system libs — same list as base or pared down
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy installed site-packages from deps stage
+COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=deps /usr/local/bin /usr/local/bin
 
-# Copy the app
+# Copy application source
 COPY . .
 
-# Create non-root user for security
-RUN useradd -m appuser
-USER appuser
-
+# Expose FastAPI port
 EXPOSE 8000
 
-# Health check for container monitoring
-HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
-  CMD curl --fail http://localhost:8000/api/health || exit 1
+# Healthcheck
+HEALTHCHECK CMD curl --fail http://localhost:8000/api/health || exit 1
 
-# Run FastAPI app with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+# Start API server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
