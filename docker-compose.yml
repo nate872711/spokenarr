@@ -11,13 +11,13 @@ services:
       - spokenarr_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    networks:
-      - spokenarr-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U spokenarr -d spokenarr"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - spokenarr-net
 
   api:
     image: nate8727/spokenarr-api:latest
