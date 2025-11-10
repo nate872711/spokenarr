@@ -1,30 +1,32 @@
 # syntax=docker/dockerfile:1.6
 
-################################################
-# Stage 1 — Build Vite frontend
-################################################
-FROM node:18-alpine AS build
+FROM node:18 AS build
+
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+# Copy only package.json first (best for caching)
+COPY package.json ./
 
+# Install dependencies WITHOUT requiring package-lock.json
+RUN npm install --legacy-peer-deps
+
+# Copy rest of project
 COPY . .
+
+# Build production assets
 RUN npm run build
 
-################################################
-# Stage 2 — Nginx runtime
-################################################
-FROM nginx:alpine AS runtime
+# Serve via nginx
+FROM nginx:1.25-alpine
 
-# Clean default config
+# Remove default nginx page
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built Vite app
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy build artifacts to nginx
+COPY --from=build /app/dist /usr/share/nginx/html/
 
-# Copy your custom nginx.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config (if you have one)
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
