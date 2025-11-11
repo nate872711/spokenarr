@@ -1,7 +1,9 @@
-<div align="center">
-  <img src="frontend/src/assets/logo.png" alt="Spokenarr Logo" width="160"/>
+# <img src="frontend/src/assets/favicon.ico" alt="Spokenarr Icon" width="20"/> Spokenarr
 
-# 🎧 Spokenarr
+
+  <img src="frontend/src/assets/logo.png" alt="Spokenarr Logo" width="500"/>
+
+
 
 [![Docker Build Status](https://github.com/nate8727/spokenarr/actions/workflows/docker-build.yml/badge.svg)](https://github.com/nate8727/spokenarr/actions/workflows/docker-build.yml)
 [![Docker Pulls (Web)](https://img.shields.io/docker/pulls/nate8727/spokenarr-web.svg)](https://hub.docker.com/r/nate8727/spokenarr-web)
@@ -13,7 +15,7 @@
 _Download, organize, and track your audiobooks automatically._
 
 *** Spokenarr is currently in beta and a work in progress ***
-</div>
+
 
 ---
 
